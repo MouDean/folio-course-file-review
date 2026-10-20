@@ -1,0 +1,2047 @@
+<title>Folio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<script>
+(function(){
+  function get(){try{return localStorage.getItem("folio-theme")||"auto"}catch(e){return "auto"}}
+  function apply(v){var r=document.documentElement;if(v==="light"||v==="dark")r.setAttribute("data-theme",v);else r.removeAttribute("data-theme");
+    var b=document.querySelectorAll(".theme [data-th]");for(var i=0;i<b.length;i++)b[i].setAttribute("aria-pressed",b[i].getAttribute("data-th")===v?"true":"false");}
+  apply(get());
+  document.addEventListener("DOMContentLoaded",function(){apply(get())});
+  document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest(".theme [data-th]");if(!b)return;var v=b.getAttribute("data-th");
+    try{localStorage.setItem("folio-theme",v)}catch(x){}apply(v);});
+})();
+</script>
+<style>
+/* Layout: one working screen — summary band (KPIs + program bars), filter bar, a course × 7-folder status grid; detail opens in a side sheet. */
+:root{
+  --bg:#F3F5F4; --surface:#FFFFFF; --sunk:#E9EDEB; --ink:#18201E; --muted:#5B6763; --line:#D7DDDA;
+  --accent:#8A1C3F; --accent-ink:#FFFFFF; --accent-soft:#F4E3E9;
+  --ok:#2F7D50; --ok-soft:#DDF0E4; --part:#B7790A; --part-soft:#FBEFD3; --miss:#BF3B2A; --miss-soft:#F9E0DB; --none:#9AA4A0; --none-soft:#ECEFEE;
+  --display:"Archivo","Segoe UI",system-ui,sans-serif; --body:"Public Sans","Segoe UI",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --shadow:0 10px 30px rgba(20,30,26,.14); color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111514; --surface:#191F1D; --sunk:#222927; --ink:#E6ECEA; --muted:#9AA7A2; --line:#2E3734;
+  --accent:#E2789A; --accent-ink:#1A0B11; --accent-soft:#3A1E28;
+  --ok:#5CC487; --ok-soft:#173226; --part:#E5B24A; --part-soft:#3A2E12; --miss:#F07A66; --miss-soft:#3D1F1A; --none:#66726D; --none-soft:#242B29;
+  --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111514; --surface:#191F1D; --sunk:#222927; --ink:#E6ECEA; --muted:#9AA7A2; --line:#2E3734;
+  --accent:#E2789A; --accent-ink:#1A0B11; --accent-soft:#3A1E28;
+  --ok:#5CC487; --ok-soft:#173226; --part:#E5B24A; --part-soft:#3A2E12; --miss:#F07A66; --miss-soft:#3D1F1A; --none:#66726D; --none-soft:#242B29;
+  --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.decide .btn.expseg[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+option,optgroup{background:var(--surface);color:var(--ink)}
+.theme{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:2px;gap:2px}
+.theme button{border:0;background:transparent;border-radius:6px;padding:5px 9px;font-weight:600;font-size:.82rem;color:var(--muted)}
+.theme button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
+.wrap{max-width:1280px;margin:0 auto;display:grid;gap:18px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.55rem;font-weight:700}
+h2{font-size:1.05rem;font-weight:600}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+.mono{font-family:var(--mono);font-size:.86em}
+.muted{color:var(--muted)}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.small{padding:4px 9px;font-size:.82rem}
+.btn:disabled{opacity:.5;cursor:default}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
+.title-block{display:grid;gap:4px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand svg{width:44px;height:44px;flex:none}
+.brand h1{font-size:1.9rem;letter-spacing:-.02em;line-height:1}
+.brand .tag{font-size:.82rem;color:var(--muted);font-weight:500}
+.logo-back{fill:var(--accent)} .logo-page{fill:var(--surface);stroke:var(--accent);stroke-width:3} .logo-front{fill:var(--accent)} .logo-inner{fill:var(--surface)} .logo-check{fill:none;stroke:var(--ok);stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+.sem{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:.78rem;font-weight:600;background:var(--sunk);color:var(--muted)}
+.pill.accent{background:var(--accent-soft);color:var(--accent)}
+.semsel{border:0;border-radius:999px;padding:3px 8px;font-size:.8rem;font-weight:700;background:var(--accent-soft);color:var(--accent);cursor:pointer}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.scanline{font-size:.8rem;color:var(--muted)}
+
+.banner{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner.warn{border-color:var(--part);background:var(--part-soft)}
+.banner.err{border-color:var(--miss);background:var(--miss-soft)}
+.progress{height:6px;background:var(--sunk);border-radius:6px;overflow:hidden;flex:1 1 160px}
+.progress>i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+
+.summary{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px}
+@media (max-width:860px){.summary{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:14px;min-width:0;align-content:start}
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.kpi{border-radius:10px;padding:10px 12px;background:var(--sunk);display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:2px;border:0;text-align:left}
+.kpi b{font-family:var(--display);font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi span{font-size:.78rem;color:var(--muted);font-weight:600;line-height:1.2}
+.grid td:nth-child(3){white-space:nowrap}
+.kpi.ok b{color:var(--ok)} .kpi.part b{color:var(--part)} .kpi.none b{color:var(--muted)} .kpi.kcm b{color:var(--accent)} .kpi.late b{color:var(--miss)}
+.kpi[aria-pressed="true"]{outline:2px solid var(--accent)}
+.bars{display:grid;gap:10px}
+.barrow{display:grid;grid-template-columns:minmax(0,230px) minmax(0,1fr) 48px;gap:10px;align-items:center;border:0;background:none;padding:2px 0;text-align:left}
+.barrow .lab{font-weight:600;font-size:.85rem;line-height:1.25}
+.barrow .pct{font-variant-numeric:tabular-nums;font-size:.82rem;color:var(--muted);text-align:right}
+.stack{display:flex;height:16px;border-radius:5px;overflow:hidden;background:var(--none-soft)}
+.stack i{display:block;height:100%}
+.stack .s-ok{background:var(--ok)} .stack .s-part{background:var(--part)} .stack .s-none{background:var(--none-soft)}
+.barrow[aria-pressed="true"] .lab{color:var(--accent)}
+@media (max-width:560px){.barrow{grid-template-columns:minmax(0,1fr) 40px}.barrow .stack{grid-column:1/-1;grid-row:2}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--muted)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filters select,.filters input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 9px}
+.filters input{flex:1 1 200px;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:6px 11px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+
+.gridwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+table.grid{border-collapse:collapse;width:100%;min-width:900px}
+.grid th,.grid td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.grid thead th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;background:var(--surface);position:sticky;top:0}
+.grid th.sec{text-align:center;width:46px;padding-inline:2px}
+.grid th.sec small{display:block;text-transform:none;letter-spacing:0;font-size:.68rem}
+.grid tbody tr{cursor:pointer}
+.grid tbody tr:hover{background:var(--sunk)}
+.grid tbody tr.prog td{background:var(--bg);font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);cursor:default;padding-block:6px}
+.ccode{font-weight:600;font-size:.9rem;font-variant-numeric:tabular-nums}
+.csub{font-size:.78rem;color:var(--muted)}
+td.cell{text-align:center;padding-inline:2px}
+.dot{width:24px;height:24px;border-radius:6px;display:inline-grid;place-items:center;font-size:.8rem;font-weight:700}
+.dot.ok{background:var(--ok);color:var(--surface)}
+.dot.part{background:var(--part-soft);color:var(--part);box-shadow:inset 0 0 0 2px var(--part)}
+.dot.miss{background:var(--miss-soft);color:var(--miss);box-shadow:inset 0 0 0 1.5px var(--miss)}
+.dot.none{background:var(--none-soft);color:var(--none)}
+.ring{--p:0;width:38px;height:38px;border-radius:50%;background:conic-gradient(var(--c,var(--accent)) calc(var(--p)*1%),var(--sunk) 0);display:grid;place-items:center}
+.ring b{width:28px;height:28px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:.68rem;font-variant-numeric:tabular-nums}
+.state{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:600;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.state.complete{background:var(--ok-soft);color:var(--ok)} .state.in_progress{background:var(--part-soft);color:var(--part)} .state.not_started,.state.not_due{background:var(--none-soft);color:var(--muted)}
+.state.approved{background:var(--ok);color:var(--surface)} .state.revise{background:var(--miss-soft);color:var(--miss)} .state.pending{background:var(--sunk);color:var(--muted)}
+.state.overdue{background:var(--miss);color:var(--surface)}
+.cm{display:inline-flex;gap:4px;align-items:center;font-weight:600;color:var(--accent);font-size:.82rem}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,16,14,.38);z-index:20}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:var(--bg);z-index:21;box-shadow:var(--shadow);display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.sheet-head{background:var(--surface);border-bottom:1px solid var(--line);padding:14px 18px;display:grid;gap:8px}
+.sheet-body{overflow-y:auto;padding:16px 18px 40px;display:grid;gap:16px;align-content:start}
+.sheet-head .row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.x{border:0;background:var(--sunk);border-radius:8px;width:34px;height:34px;font-size:1.1rem;flex:none}
+.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.84rem;color:var(--muted);align-items:center}
+.meta select,.meta input{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 6px;font-size:.84rem}
+.checks{display:grid;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ck{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:start}
+.ck:last-child{border-bottom:0}
+.ck h3{font-size:.92rem;font-weight:600}
+.ck p{margin:2px 0 0;font-size:.84rem;color:var(--muted)}
+.ck .cmc{font-size:.76rem}
+.amx{width:100%;border-collapse:collapse;font-size:.84rem}
+.amx th,.amx td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:center}
+.amx th:first-child,.amx td:first-child{text-align:left}
+.amx thead th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.yes{color:var(--ok);font-weight:700} .no{color:var(--miss);font-weight:700}
+.issues{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.86rem}
+.thread{display:grid;gap:10px}
+.cmt{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px}
+.cmt.reply{margin-left:22px;border-style:dashed}
+.cmt .h{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:.78rem;color:var(--muted)}
+.cmt .h b{color:var(--ink)}
+.cmt .t{white-space:pre-wrap;font-size:.9rem}
+.cmt .acts{display:flex;gap:6px;flex-wrap:wrap}
+.st-open{color:var(--miss)} .st-fixed{color:var(--part)} .st-resolved{color:var(--ok)}
+.composer{display:grid;gap:8px}
+.composer textarea,.composer input,.composer select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;width:100%}
+.composer textarea{min-height:84px;resize:vertical}
+.composer .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.composer .row select{width:auto}
+.decide{display:flex;gap:8px;flex-wrap:wrap}
+.decide .btn[aria-pressed="true"]{background:var(--sunk);border-color:var(--muted)}
+.decide .btn[aria-pressed="true"].ap{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.decide .btn[aria-pressed="true"].rv{background:var(--miss);border-color:var(--miss);color:var(--surface)}
+.note{font-size:.8rem;color:var(--muted)}
+.copyable{user-select:all;font-family:var(--mono);font-size:.82rem;background:var(--sunk);border-radius:6px;padding:2px 6px}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.settings-grid label{display:grid;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600}
+.settings-grid input,.settings-grid select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 9px;color:var(--ink);font-weight:400}
+.tabs{justify-self:start}
+.tabs button{padding:8px 14px}
+.ctable input{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 7px;margin:2px;width:170px}
+.sheet .settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.settings-grid select,.settings-grid input{width:100%;min-width:0}
+@media (max-width:520px){.sheet .settings-grid{grid-template-columns:1fr}}
+.scanbox{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:3px 3px 3px 6px;background:var(--surface)}
+.scanbox select{border:0;background:transparent;font-weight:600;max-width:180px}
+.scanbox label{display:inline-flex;gap:4px;align-items:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:9px;z-index:40;font-weight:600;font-size:.86rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="title-block">
+      <span class="eyebrow">College of Arts, Education and Social Sciences · Department of Education</span>
+      <div class="brand">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <path class="logo-page" d="M14 6h22l10 10v24H14z"/>
+          <path class="logo-page" d="M9 11h22l10 10v24H9z"/>
+          <path class="logo-front" d="M4 18h18v12h22c3 0 5 2 5 5v20c0 3-2 5-5 5H9c-3 0-5-2-5-5z"/>
+          <path class="logo-inner" d="M14 30h28v22H14z"/>
+          <path class="logo-check" d="M19 41l6 6 12-12"/>
+        </svg>
+        <div style="display:grid;gap:2px"><h1>Folio</h1><span class="tag">Course file review</span></div>
+      </div>
+      <div class="sem"><select id="semSel" class="semsel" aria-label="Semester" title="Switch semester"><option>Fall 2026–27</option></select><span class="scanline" id="scanLine">Waiting for data…</span></div>
+    </div>
+    <div class="actions" id="leadActions" hidden>
+      <button class="btn" id="btnAdd" type="button">+ Add course file</button>
+      <button class="btn" id="btnRemind" type="button">Email reminders</button>
+      <button class="btn" id="btnReport" type="button">Download report</button>
+      <button class="btn" id="btnExport" type="button">Export…</button>
+      <span class="theme" role="group" aria-label="Theme"><button type="button" data-th="auto" title="Follow your device setting">Auto</button><button type="button" data-th="light">Light</button><button type="button" data-th="dark">Dark</button></span>
+      <button class="btn" id="btnSettings" type="button">Settings</button>
+      <span class="scanbox"><select id="scanProg" aria-label="Programs to scan"><option value="">All programs</option></select><label class="note" title="Re-read every folder, including unchanged and approved course files"><input type="checkbox" id="scanFull"> Full</label><button class="btn primary" id="btnScan" type="button">Scan SharePoint</button></span>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="summary" aria-label="Summary">
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="sumTitle">Department overview</h2><span class="note" id="sumNote"></span></div>
+      <div class="kpis" id="kpis"></div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2>Progress by program <span class="note" style="font-weight:400;font-family:var(--body)">complete / total</span></h2>
+        <div class="legend"><span><i class="sw" style="background:var(--ok)"></i>Complete</span><span><i class="sw" style="background:var(--part)"></i>In progress</span><span><i class="sw" style="background:var(--none-soft);box-shadow:inset 0 0 0 1px var(--line)"></i>Not due yet / overdue</span></div></div>
+      <div class="bars" id="bars"></div>
+    </div>
+  </section>
+
+  <section id="settingsPanel" class="panel" hidden aria-label="Settings">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h2>Settings</h2><button class="btn small" id="btnCloseSettings" type="button">Close</button></div>
+    <p class="note" style="margin:0">The default semester opens first. Use the semester menu at the top to switch; every semester keeps its own course files, due dates and reviews.</p>
+    <p class="note" style="margin:0" id="dueNote"></p>
+    <div class="settings-grid">
+      <label for="setYear">Default academic year<input id="setYear" placeholder="2026 - 2027"></label>
+      <label for="setSem">Default semester<select id="setSem"><option>Fall</option><option>Winter</option><option>Spring</option><option>Summer</option></select></label>
+      <label for="dueA">Term A due date<input id="dueA" type="date"></label>
+      <label for="dueB">Term B due date<input id="dueB" type="date"></label>
+      <label for="dueF">Full-semester due date<input id="dueF" type="date"></label>
+      <label for="setLink">Link to this page (used in emails)<input id="setLink" placeholder="https://claude.ai/…"></label>
+      <label for="setRevName">Reviewer name (on reports)<input id="setRevName" placeholder="Mousa Alhatti"></label>
+      <label for="setRevEmail">Reviewer email (on reports)<input id="setRevEmail" type="email" placeholder="name@adu.ac.ae"></label>
+    </div>
+    <h3 style="font-size:.9rem">Signature on PDF reports</h3>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div id="sigPrev" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-height:56px;min-width:160px;display:grid;place-items:center"></div>
+      <label class="btn small" for="sigFile" style="cursor:pointer">Upload signature…<input id="sigFile" type="file" accept="image/*" hidden></label><button class="btn small" type="button" id="sigRemove">Remove</button>
+      <span class="note">Placed on the signature line of every exported PDF, with the export date.</span></div>
+    <h3 style="font-size:.9rem">Import the term schedule</h3>
+    <p class="note" style="margin:0">Upload the registration schedule (.xlsx). Folio updates class sizes, terms and campuses, and lists courses that are on the schedule but have no course file (and the reverse). Nothing is changed until you apply it.</p>
+    <label class="btn" for="impFile" style="justify-self:start;cursor:pointer">Choose schedule file…<input id="impFile" type="file" accept=".xlsx,.xls" hidden></label>
+    <h3 style="font-size:.9rem">Removed course files</h3>
+    <div id="removedList" style="display:grid;gap:2px;font-size:.86rem"></div>
+    <div class="actions"><button class="btn primary" id="btnSaveSettings" type="button">Save settings</button><span class="note">Due dates are saved for the semester you are viewing.</span></div>
+  </section>
+
+  <div class="filters" role="search">
+    <div class="seg" id="scopeSeg" hidden><button type="button" data-scope="mine" aria-pressed="true">My course files</button><button type="button" data-scope="all" aria-pressed="false">All</button></div>
+    <select id="fProg" aria-label="Program"><option value="">All programs</option></select>
+    <select id="fTerm" aria-label="Term"><option value="">All terms</option><option>Term A</option><option>Term B</option><option>Full semester</option><option value="-">Term not set</option></select>
+    <select id="fState" aria-label="Status"><option value="">Any status</option><option value="complete">Complete</option><option value="in_progress">In progress</option><option value="not_due">Not due yet</option><option value="overdue">Overdue</option><option value="open">Has open comments</option><option value="revise">Needs revision</option><option value="approved">Approved</option></select>
+    <select id="fInst" aria-label="Instructor"><option value="">All instructors</option></select>
+    <input id="fText" type="search" placeholder="Search course or instructor" aria-label="Search">
+  </div>
+
+  <div class="legend" aria-label="Legend">
+    <span><i class="dot ok" style="width:16px;height:16px;font-size:.6rem">✓</i>Meets the model course file</span>
+    <span><i class="dot part" style="width:16px;height:16px;font-size:.6rem">!</i>Partly there</span>
+    <span><i class="dot miss" style="width:16px;height:16px;font-size:.6rem">✕</i>Missing</span>
+    <span><i class="dot none" style="width:16px;height:16px;font-size:.6rem">·</i>Not uploaded yet</span>
+    <span>Columns 1–7 follow the course file checklist.</span>
+  </div>
+
+  <div class="gridwrap">
+    <table class="grid">
+      <thead><tr>
+        <th>Course</th><th>Instructor</th><th>Term</th>
+        <th class="sec" title="Course checklist">1<small>Checklist</small></th>
+        <th class="sec" title="Course syllabus">2<small>Syllabus</small></th>
+        <th class="sec" title="Instructional materials">3<small>Materials</small></th>
+        <th class="sec" title="Assessment">4<small>Assess.</small></th>
+        <th class="sec" title="Attendance">5<small>Attend.</small></th>
+        <th class="sec" title="Comprehensive review (CRC)">6<small>CRC</small></th>
+        <th class="sec" title="Student evaluation (SET)">7<small>SET</small></th>
+        <th>Done</th><th>Review</th><th>Comments</th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="13" class="empty">Loading course files…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="note">Department rules: graded samples per assessment and per level (High, Medium, Low) are 1 for classes under 30 students, 2 for 30 to 60 and 3 for more than 60. The syllabus must state the section and campus.</p>
+  <p class="note">The checker compares each course file with the department's model course file (USS001): the seven checklist folders, current and previous syllabus, and for every assessment the instrument, the answer key or rubric, and graded High, Medium and Low samples. Student work is counted, never listed. Quality of content is judged by the reviewer in the comments.</p>
+</div>
+
+<div id="scrim" class="scrim" hidden></div>
+<aside id="sheet" class="sheet" hidden aria-modal="true" role="dialog" aria-labelledby="dTitle"></aside>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+/* ===== Course-file checker: shared logic (template = USS001 model course file) ===== */
+var CF = (function () {
+  var SECTIONS = [
+    { k: 1, label: "Course checklist", short: "Checklist", kw: /check\s*list/i },
+    { k: 2, label: "Course syllabus (current + previous)", short: "Syllabus", kw: /syllab/i },
+    { k: 3, label: "All instructional materials", short: "Materials", kw: /material|teaching|instruction|presentation/i },
+    { k: 4, label: "Assessment (instruments, keys/rubrics, High/Medium/Low samples)", short: "Assessment", kw: /assess/i },
+    { k: 5, label: "Student attendance data", short: "Attendance", kw: /attend/i },
+    { k: 6, label: "Comprehensive review (CRC)", short: "CRC", kw: /comprehensive|review|crc/i },
+    { k: 7, label: "Summary of student feedback (SET)", short: "SET", kw: /\bset\b|evaluation|feedback/i }
+  ];
+  var TERM_RE = /(20\d\d)\s*[-_/ ]\s*(20)?(\d\d)/g;
+  var YEAR_TAG = "2026-27";
+
+  function allFiles(n) {
+    var out = (n.files || []).slice();
+    (n.folders || []).forEach(function (f) { out = out.concat(allFiles(f)); });
+    return out;
+  }
+  function secNum(name) {
+    var m = /^\s*([1-7])(?![0-9])\s*[.\-_)\s]*/.exec(name || "");
+    return m ? +m[1] : 0;
+  }
+  function isRoot(n) {
+    var nums = {}, kws = 0;
+    (n.folders || []).forEach(function (f) {
+      var k = secNum(f.name);
+      if (k) nums[k] = 1;
+      else if (SECTIONS.some(function (s) { return s.kw.test(f.name); })) kws++;
+    });
+    return Object.keys(nums).length + kws >= 2;
+  }
+  // The 1-7 folders may sit inside one or more wrapper folders; look a few levels down.
+  function findRoot(n, depth) {
+    if (isRoot(n)) return n;
+    if (!depth) return null;
+    var fs = n.folders || [];
+    for (var i = 0; i < fs.length; i++) { var r = findRoot(fs[i], depth - 1); if (r) return r; }
+    return null;
+  }
+  function findSection(root, s) {
+    var fs = root.folders || [];
+    var hit = fs.filter(function (f) { return secNum(f.name) === s.k; });
+    if (!hit.length) hit = fs.filter(function (f) { return !secNum(f.name) && s.kw.test(f.name); });
+    return hit[0] || null;
+  }
+  function ext(name) { var m = /\.([a-z0-9]+)$/i.exec(name || ""); return m ? m[1].toLowerCase() : ""; }
+  function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
+
+  var ROLE_INS = /instrument|brief|question|paper|task|guideline/i;
+  var ROLE_KEY = /answer|marking|scheme|rubric|key|solution|worked/i;
+  var ROLE_GRD = /graded|sample|student\s*work|scripts/i;
+  var LV = [["h", /high/i], ["m", /medium|\bmed\b|mid/i], ["l", /\blow/i]];
+
+  function levelOf(name) {
+    for (var i = 0; i < LV.length; i++) if (LV[i][1].test(name)) return LV[i][0];
+    return null;
+  }
+  function roleOf(name) {
+    if (ROLE_GRD.test(name)) return "grd";
+    if (levelOf(name)) return "lvl";
+    if (/answer|marking|scheme|rubric|solution|worked/i.test(name)) return "key";
+    if (ROLE_INS.test(name)) return "ins";
+    return null;
+  }
+  function levels(node, acc) {
+    (node.folders || []).forEach(function (f) {
+      var l = levelOf(f.name);
+      if (l) acc[l] += allFiles(f).length;
+      else levels(f, acc);
+    });
+    return acc;
+  }
+  function checkAssessment(a) {
+    var r = { name: a.name, ins: 0, key: 0, h: 0, m: 0, l: 0, loose: 0 };
+    (a.files || []).forEach(function (f) {
+      if (ROLE_KEY.test(f.name)) r.key++; else r.ins++;
+      if (/rubric|guideline/i.test(f.name) && ROLE_KEY.test(f.name)) { /* instrument + rubric in one file */ r.ins = Math.max(r.ins, 1); }
+    });
+    var graded = null;
+    (a.folders || []).forEach(function (f) {
+      var role = roleOf(f.name);
+      if (role === "ins") { r.ins += allFiles(f).length; allFiles(f).forEach(function (x) { if (/key|answer|rubric|marking/i.test(x.name)) r.key++; }); }
+      else if (role === "key") r.key += allFiles(f).length;
+      else if (role === "grd") graded = f;
+    });
+    var lv = levels(graded || a, { h: 0, m: 0, l: 0 });
+    r.h = lv.h; r.m = lv.m; r.l = lv.l;
+    if (graded) r.loose = (graded.files || []).length;
+    return r;
+  }
+
+  function evaluate(root) {
+    var items = [], issues = [], assessments = [];
+    var total = allFiles(root).length;
+    SECTIONS.forEach(function (s) {
+      var f = findSection(root, s);
+      var it = { k: s.k, s: "miss", note: "" };
+      if (!f) { it.note = "Folder “" + s.k + ". " + s.short + "” not found."; items.push(it); return; }
+      var files = allFiles(f);
+      var n = files.length;
+      if (s.k === 2) {
+        var cur = null, prev = null;
+        (f.folders || []).forEach(function (x) {
+          if (/current|this|present/i.test(x.name)) cur = x;
+          else if (/previous|prior|past|last|old/i.test(x.name)) prev = x;
+        });
+        var nc = cur ? allFiles(cur).length : 0, np = prev ? allFiles(prev).length : 0;
+        if (cur || prev) {
+          if (nc && np) {
+            it.s = "ok";
+            var prevOnlyNote = allFiles(prev).every(function (x) { return x.size === 0 || ext(x.name) === "txt"; });
+            it.note = prevOnlyNote ? "Current syllabus found; previous folder holds a note (first delivery)." : "Current and previous syllabi found.";
+          } else if (nc) { it.s = "part"; it.note = "Previous offering syllabus missing (add it, or a note if this is the first delivery)."; }
+          else if (np) { it.s = "part"; it.note = "Current syllabus missing."; }
+          else it.note = "Syllabus folders are empty.";
+          var curFiles = cur ? allFiles(cur) : [];
+          curFiles.forEach(function (x) {
+            var m, bad = null; TERM_RE.lastIndex = 0;
+            while ((m = TERM_RE.exec(x.name))) { var yy = m[1] + "-" + m[3]; if (yy !== YEAR_TAG) bad = yy; }
+            if (bad) issues.push("Syllabus: the current syllabus file “" + x.name + "” mentions " + bad + ". Check it is the version for this semester.");
+          });
+        } else if (n >= 2) { it.s = "part"; it.note = plural(n, "file") + " found. Put them in “Current” and “Previous” sub-folders."; }
+        else if (n === 1) { it.s = "part"; it.note = "Only one syllabus found. Add the syllabus from the most recent previous offering, in a “Previous” sub-folder."; }
+        else it.note = "No syllabus uploaded.";
+      } else if (s.k === 4) {
+        var subs = f.folders || [];
+        var setLike = subs.some(function (x) { var r = roleOf(x.name); return r === "grd" || r === "ins" || r === "key"; });
+        var units = setLike ? [{ name: "All assessments", files: f.files, folders: subs }] : subs;
+        if (!setLike && (f.files || []).length && !subs.length) units = [{ name: "Assessment", files: f.files, folders: [] }];
+        units.forEach(function (u) { assessments.push(checkAssessment(u)); });
+        if (!n) it.note = "No assessment evidence uploaded.";
+        else if (!assessments.length) { it.s = "part"; it.note = "Files found, but not organised by assessment."; }
+        else {
+          var gaps = [];
+          assessments.forEach(function (a) {
+            var miss = [];
+            if (!a.ins) miss.push("assessment instrument");
+            if (!a.key) miss.push("answer key / marking scheme or rubric");
+            var lv = []; if (!a.h) lv.push("High"); if (!a.m) lv.push("Medium"); if (!a.l) lv.push("Low");
+            if (lv.length) miss.push("graded sample: " + lv.join(", "));
+            if (miss.length) gaps.push(a.name + ": missing " + miss.join("; ") + ".");
+            if (a.loose) issues.push(a.name + ": " + plural(a.loose, "graded file") + " not placed in a High / Medium / Low folder.");
+          });
+          it.s = gaps.length ? "part" : "ok";
+          it.note = gaps.length ? gaps.length + " of " + assessments.length + " assessments incomplete." : plural(assessments.length, "assessment") + " with instrument, key/rubric and High, Medium and Low samples.";
+          gaps.forEach(function (g) { issues.push("Assessment – " + g); });
+        }
+      } else if (s.k === 6) {
+        var xl = files.filter(function (x) { return /^xls/.test(ext(x.name)); });
+        if (xl.length) { it.s = "ok"; it.note = "CRC workbook: " + xl.map(function (x) { return x.name; }).join(", "); }
+        else if (n) { it.s = "part"; it.note = "File found, but not the CRC Excel workbook."; }
+        else it.note = "No comprehensive review uploaded.";
+      } else if (s.k === 7) {
+        if (n) { it.s = "ok"; it.note = files.some(function (x) { return /disclaim|not available|n\/?a/i.test(x.name); }) ? "SET placeholder/disclaimer uploaded (replace with results once released)." : "SET summary uploaded."; }
+        else it.note = "No SET summary or disclaimer uploaded.";
+      } else if (s.k === 1) {
+        if (n) { it.s = "ok"; it.note = files.map(function (x) { return x.name; }).slice(0, 2).join(", "); }
+        else it.note = "Checklist not uploaded.";
+      } else {
+        if (n) { it.s = "ok"; it.note = files.some(function (x) { return x.name === "(contents)"; }) ? "Uploaded." : plural(n, "file") + " uploaded."; }
+        else it.note = "Folder is empty.";
+      }
+      items.push(it);
+    });
+    var ok = items.filter(function (i) { return i.s === "ok"; }).length;
+    var part = items.filter(function (i) { return i.s === "part"; }).length;
+    var state = total === 0 ? "not_started" : (ok === 7 ? "complete" : "in_progress");
+    return { items: items, issues: issues, assessments: assessments.map(function (a) { return { name: a.name, ins: a.ins > 0, key: a.key > 0, h: a.h, m: a.m, l: a.l }; }), files: total, state: state, score: Math.round(((ok + part * 0.5) / 7) * 100) };
+  }
+
+  function emptyEval() {
+    return { items: SECTIONS.map(function (s) { return { k: s.k, s: "miss", note: "Nothing uploaded yet." }; }), issues: [], assessments: [], files: 0, state: "not_started", score: 0 };
+  }
+
+  function programShort(name) {
+    if (/philosophy|phd/i.test(name)) return "PhD in Education";
+    if (/technolog/i.test(name)) return "M.Ed. Educational Technologies & AI";
+    if (/leadership/i.test(name)) return "M.Ed. Educational Leadership";
+    if (/diploma/i.test(name)) return "PG Diploma in Teaching";
+    return name;
+  }
+  function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+  function rowId(rel) { return (rel.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) + "-" + hash(rel)); }
+  function prettyInstructor(folder) {
+    if (!folder) return "";
+    var m = /^([^,]+),\s*(.+)$/.exec(folder.replace(/\s*\(.*?\)\s*/g, " ").trim());
+    if (m) return (m[2].split(/\s+/)[0] + " " + m[1]).trim();
+    return folder.replace(/^(ms|mr|dr|mrs)\.?\s+/i, "").trim();
+  }
+
+  /* Turn the department tree into course-file rows. Tree: Department > Program > Course > [section/instructor] > 1..7 */
+  function rows(dept, basePath) {
+    var out = [];
+    (dept.folders || []).forEach(function (prog) {
+      (prog.folders || []).forEach(function (course) {
+        var roots, kids = course.folders || [];
+        if (isRoot(course)) roots = [{ node: course, sub: "" }];
+        // A single wrapper folder (e.g. "EDUL520 Fall- Term A Ghanem/EDUL520 Term A Fall 2026") is still the course's own file.
+        // (Only when the 1-7 folders sit deeper than that single folder; an instructor folder holding them directly keeps its own row.)
+        else if (kids.length === 1 && !isRoot(kids[0]) && findRoot(kids[0], 3)) roots = [{ node: findRoot(kids[0], 3), sub: "" }];
+        else if (kids.length) roots = kids.map(function (f) { return { node: findRoot(f, 3) || f, sub: f.name }; });
+        else roots = [{ node: course, sub: "" }];
+        roots.forEach(function (r) {
+          var rel = prog.name + "/" + course.name + (r.sub ? "/" + r.sub : "");
+          var ev = isRoot(r.node) ? evaluate(r.node) : (allFiles(r.node).length ? Object.assign(emptyEval(), { state: "in_progress", files: allFiles(r.node).length, issues: ["Files uploaded, but not in the 1–7 course-file folders."] }) : emptyEval());
+          out.push({
+            id: rowId(rel),
+            program: prog.name,
+            programShort: programShort(prog.name),
+            course: course.name,
+            section: r.sub,
+            instructorFromFolder: prettyInstructor(/\d/.test(r.sub) && !/,/.test(r.sub) ? "" : r.sub),
+            path: basePath + "/" + rel,
+            node: r.node,
+            scan: ev
+          });
+        });
+      });
+    });
+    return out;
+  }
+
+  function setYear(y) { var m = /(20\d\d)\D+20(\d\d)/.exec(y || ""); if (m) YEAR_TAG = m[1] + "-" + m[2]; }
+  return { rowId: rowId, setYear: setYear, SECTIONS: SECTIONS, evaluate: evaluate, rows: rows, isRoot: isRoot, secNum: secNum, programShort: programShort };
+})();
+if (typeof module !== "undefined") module.exports = CF;
+
+</script>
+<script>
+/* ===== Course File Monitor app ===== */
+(function () {
+  var M365 = "Microsoft 365";
+  var DRIVE = "b!puZM-TFnlkCsdeKHodaislnsRN_Yzj5Hl19_Us3vS4dhhzkd7J0LQ55jyq94WXx0";
+  var SITE = "https://studentsaduac.sharepoint.com";
+  var LIB = "/sites/CAS_CourseFiles/Shared Documents";
+  var DEPT = "Department of Education";
+  var TERMS = ["Term A", "Term B", "Full semester"];
+
+  var S = {
+    db: null, user: null, mcp: null, isLead: false, me: null, myEmail: "",
+    courses: [], comments: [], people: [], config: {}, cfgLoaded: false,
+    view: (function () { try { var v = localStorage.getItem("folio-sem"); if (v && v.indexOf("/") > 0) { var p = v.split("/"); return { year: p[0], semester: p[1] }; } } catch (e) {} return null; })(),
+    scope: "all", open: null, filters: { prog: "", term: "", state: "", inst: "", text: "" },
+    names: {}, scanning: false, kpiFilter: ""
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function toast(msg) { var t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function () { t.hidden = true; }, 2600); }
+  function fmtDate(iso) { if (!iso) return ""; var d = new Date(iso); if (isNaN(d)) return ""; return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
+  function fmtDT(iso) { if (!iso) return ""; var d = new Date(iso); return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + ", " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); }
+  function shortYear(y) { var m = /(20\d\d)\D+20(\d\d)/.exec(y || "2026 - 2027"); return m ? m[1] + "\u2013" + m[2] : (y || ""); }
+  function nowISO() { return new Date().toISOString(); }
+  // The semester being viewed: the viewer's own choice (remembered in this browser), else the default from Settings.
+  var FALL26 = "2026 - 2027/Fall", SEMS = ["Fall", "Winter", "Spring", "Summer"];
+  function curYear() { return (S.view && S.view.year) || S.config.year || "2026 - 2027"; }
+  function curSem() { return (S.view && S.view.semester) || S.config.semester || "Fall"; }
+  function semKey() { return curYear() + "/" + curSem(); }
+  function semLabelOf(k) { var p = k.split("/"); return p[1] + " " + shortYear(p[0]); }
+  function semLabel() { return semLabelOf(semKey()); }
+  function semDue() { var b = S.config.dueBySem || {}, k = semKey(); return b[k] || (k === FALL26 ? S.config.due : null) || {}; }
+  function semLastScan() { var b = S.config.lastScanBySem || {}, k = semKey(); return b[k] || (k === FALL26 ? S.config.lastScan : null); }
+  // Row ids: Fall 2026-27 keeps its original ids; every other semester gets its own, so semesters never overwrite each other.
+  function rid(rel) { return semKey() === FALL26 ? CF.rowId(rel) : CF.rowId(semKey() + "/" + rel); }
+  function semOptions() {
+    var years = {}; years[S.config.year || "2026 - 2027"] = 1; years[curYear()] = 1;
+    S.courses.forEach(function (c) { if (c.semester) years[c.semester.split("/")[0]] = 1; });
+    var ys = Object.keys(years).sort(), last = /(20\d\d)\D+(20\d\d)/.exec(ys[ys.length - 1]);
+    if (last) ys.push((+last[1] + 1) + " - " + (+last[2] + 1));
+    var n = {}; S.courses.forEach(function (c) { if (!c.gone && !c.removed) { var k = c.semester || FALL26; n[k] = (n[k] || 0) + 1; } });
+    var out = []; ys.forEach(function (y) { SEMS.forEach(function (s) { var k = y + "/" + s; out.push({ k: k, n: n[k] || 0 }); }); });
+    return out;
+  }
+  function switchSem(k) {
+    var p = k.split("/"); S.view = { year: p[0], semester: p[1] };
+    try { localStorage.setItem("folio-sem", k); } catch (e) {}
+    CF.setYear(p[0]); if (S.open) closeSheet(); S.filters.prog = ""; S.filters.inst = "";
+    if (!$("settingsPanel").hidden) fillSettings();
+    renderAll(); toast("Showing " + semLabelOf(k));
+  }
+  function basePath() { return LIB + "/" + semKey() + "/" + DEPT; }
+  function folderUrl(path) { return SITE + "/sites/CAS_CourseFiles/Shared%20Documents/Forms/AllItems.aspx?id=" + encodeURIComponent(path); }
+  function banner(kind, html) { var b = $("banner"); if (!html) { b.hidden = true; return; } b.className = "banner " + (kind || ""); b.innerHTML = html; b.hidden = false; }
+
+  /* ---------- derived ---------- */
+  function rawScan(c) { return c.scan || { items: [], issues: [], assessments: [], state: "not_started", score: 0, files: 0 }; }
+  // Samples required per assessment and per level (High/Medium/Low), from the class size.
+  function need(c) { var n = +c.enrolled || 0; return n > 60 ? 3 : n >= 30 ? 2 : 1; }
+  var effMemo = new WeakMap();
+  function scan(c) {
+    var s = rawScan(c);
+    if (s.state === "not_started") return s;
+    var key = (+c.enrolled || 0) + "|" + JSON.stringify(s.syllabus || null) + "|" + JSON.stringify(c.accepted || null);
+    var m = effMemo.get(s); if (m && m.key === key) return m.val;
+    var items = (s.items || []).map(function (i) { return Object.assign({}, i); });
+    var issues = (s.issues || []).slice();
+    var byK = {}; items.forEach(function (i) { byK[i.k] = i; });
+    var nd = need(c), short = [];
+    (s.assessments || []).forEach(function (a) {
+      if (!(a.h && a.m && a.l)) return; // already reported as missing
+      var lv = []; if (a.h < nd) lv.push("High " + a.h); if (a.m < nd) lv.push("Medium " + a.m); if (a.l < nd) lv.push("Low " + a.l);
+      if (lv.length) short.push(a.name + ": " + nd + " samples per level needed, found " + lv.join(", ") + ".");
+    });
+    if (short.length && byK[4]) {
+      if (byK[4].s === "ok") byK[4].s = "part";
+      byK[4].note = (byK[4].note ? byK[4].note + " " : "") + "Class of " + c.enrolled + " needs " + nd + " High, " + nd + " Medium and " + nd + " Low samples per assessment.";
+      short.forEach(function (x) { issues.push("Samples \u2013 " + x); });
+    }
+    var sy = s.syllabus;
+    if (sy && sy.read && byK[2]) {
+      var miss = []; if (!sy.campus) miss.push("campus"); if (!sy.section) miss.push("section");
+      if (miss.length) {
+        if (byK[2].s === "ok") byK[2].s = "part";
+        byK[2].note = (byK[2].note ? byK[2].note + " " : "") + "The " + miss.join(" and ") + " could not be found in the current syllabus.";
+        issues.push("Syllabus: the current syllabus must state the " + miss.join(" and ") + " (" + (sy.file || "current syllabus") + ").");
+      }
+    }
+    // Reviewer overrides: an item the reviewer accepted counts as done.
+    var acc = c.accepted || {};
+    var ISSUE_OF = { 2: /^Syllabus/, 4: /^(Samples|Assessment)|not placed in a High/ };
+    Object.keys(acc).forEach(function (k) {
+      var it = byK[k]; if (!it || !acc[k]) return;
+      it.acceptedFrom = it.s; it.accepted = acc[k];
+      if (it.s !== "ok") { it.s = "ok"; it.note = "Accepted by the reviewer" + (acc[k].at ? " on " + fmtDate(acc[k].at.slice(0, 10)) : "") + ". " + (it.note || ""); }
+      if (ISSUE_OF[k]) issues = issues.filter(function (x) { return !ISSUE_OF[k].test(x); });
+    });
+    var ok = items.filter(function (i) { return i.s === "ok"; }).length, part = items.filter(function (i) { return i.s === "part"; }).length;
+    var val = Object.assign({}, s, { items: items, issues: issues, state: ok === 7 ? "complete" : "in_progress", score: Math.round(((ok + part * 0.5) / 7) * 100) });
+    effMemo.set(s, { key: key, val: val });
+    return val;
+  }
+
+  function openComments(cid) { return S.comments.filter(function (m) { return m.courseId === cid && m.kind === "issue" && m.status !== "resolved"; }); }
+  function dueFor(c) { var d = semDue(); return c.term === "Term A" ? d.A : c.term === "Term B" ? d.B : c.term === "Full semester" ? d.F : ""; }
+  // Display status: an empty course file is fine until its due date.
+  function dstate(c) { var s = scan(c).state; if (s !== "not_started") return s; return isOverdue(c) ? "overdue" : "not_due"; }
+  function isOverdue(c) { var d = dueFor(c); return d && scan(c).state !== "complete" && new Date(d + "T23:59:59") < new Date(); }
+  function semCourses() { var k = semKey(); return S.courses.filter(function (c) { return !c.gone && !c.removed && (c.semester || "2026 - 2027/Fall") === k; }); }
+  function norm(s) { return String(s || "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim(); }
+  function mine(c) {
+    if (S.myEmail && c.email && c.email.toLowerCase() === S.myEmail) return true;
+    if (!S.myName || !c.instructor) return false;
+    var parts = norm(c.instructor).split(" ").filter(function (w) { return w.length > 2; });
+    return parts.length > 0 && parts.every(function (w) { return S.myName.indexOf(w) >= 0; });
+  }
+  function visible() {
+    var f = S.filters, t = f.text.trim().toLowerCase();
+    return semCourses().filter(function (c) {
+      if (S.scope === "mine" && !mine(c)) return false;
+      if (f.prog && c.programShort !== f.prog) return false;
+      if (f.term) { if (f.term === "-" ? c.term : c.term !== f.term) return false; }
+      if (f.inst && (c.instructor || "") !== f.inst) return false;
+      var st = scan(c).state, rv = (c.review || {}).status || "pending";
+      if (f.state === "open" && !openComments(c.id).length) return false;
+      if (f.state === "revise" && rv !== "revise") return false;
+      if (f.state === "approved" && rv !== "approved") return false;
+      if (["complete", "in_progress", "not_due", "overdue"].indexOf(f.state) >= 0 && dstate(c) !== f.state) return false;
+      if (t && (c.course + " " + (c.instructor || "") + " " + (c.section || "")).toLowerCase().indexOf(t) < 0) return false;
+      return true;
+    });
+  }
+
+  /* ---------- render: summary ---------- */
+  function renderSummary() {
+    var base = semCourses().filter(function (c) { return S.scope !== "mine" || mine(c); });
+    var n = base.length, comp = 0, prog = 0, none = 0, late = 0, oc = 0, appr = 0;
+    base.forEach(function (c) { var s = dstate(c); if (s === "complete") comp++; else if (s === "in_progress") prog++; else if (s === "overdue") late++; else none++; oc += openComments(c.id).length; if ((c.review || {}).status === "approved") appr++; });
+    $("sumTitle").textContent = S.scope === "mine" ? "Your course files" : "Department overview";
+    $("sumNote").textContent = n ? appr + " of " + n + " approved by the reviewer" : "";
+    var k = [["", n, "Course files", ""], ["complete", comp, "Complete", "ok"], ["in_progress", prog, "In progress", "part"], ["not_due", none, "Not due yet", "none"], ["overdue", late, "Overdue", "late"], ["open", oc, "Open comments", "kcm"]];
+    $("kpis").innerHTML = k.map(function (x) { return '<button type="button" class="kpi ' + x[3] + '" data-kpi="' + x[0] + '" aria-pressed="' + (S.filters.state === x[0] && x[0] !== "" ? "true" : "false") + '"><b>' + x[1] + "</b><span>" + x[2] + "</span></button>"; }).join("");
+    var progs = {};
+    base.forEach(function (c) { var p = progs[c.programShort] = progs[c.programShort] || { ok: 0, part: 0, none: 0, n: 0, score: 0 }; var s = scan(c).state; p.n++; p.score += scan(c).score; if (s === "complete") p.ok++; else if (s === "in_progress") p.part++; else p.none++; });
+    var order = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
+    var keys = Object.keys(progs).sort(function (a, b) { return (order.indexOf(a) + 99) % 99 - (order.indexOf(b) + 99) % 99; });
+    $("bars").innerHTML = keys.length ? keys.map(function (p) {
+      var v = progs[p], w = function (x) { return (x / v.n * 100).toFixed(2) + "%"; };
+      return '<button type="button" class="barrow" data-prog="' + esc(p) + '" aria-pressed="' + (S.filters.prog === p) + '" title="' + v.ok + " complete, " + v.part + " in progress, " + v.none + ' not started"><span class="lab">' + esc(p) + '</span><span class="stack"><i class="s-ok" style="width:' + w(v.ok) + '"></i><i class="s-part" style="width:' + w(v.part) + '"></i></span><span class="pct">' + v.ok + "/" + v.n + "</span></button>";
+    }).join("") : '<p class="note">No course files yet.</p>';
+  }
+
+  /* ---------- render: grid ---------- */
+  function cellHTML(it, st) {
+    if (st === "not_started") return '<span class="dot none" title="Not started">·</span>';
+    var m = { ok: ["ok", "✓"], part: ["part", "!"], miss: ["miss", "✕"] }[it ? it.s : "miss"];
+    return '<span class="dot ' + m[0] + '" title="' + esc(it ? it.note : "") + '">' + m[1] + "</span>";
+  }
+  function stateLabel(s) { return { complete: "Complete", in_progress: "In progress", not_started: "Not started", not_due: "Not due yet", overdue: "Overdue" }[s] || s; }
+  function renderGrid() {
+    var list = visible();
+    var tb = $("rows");
+    if (!S.db) { tb.innerHTML = '<tr><td colspan="13" class="empty">Open this page in Claude while signed in to see the course files.</td></tr>'; return; }
+    if (!semCourses().length) { tb.innerHTML = '<tr><td colspan="13" class="empty">No course files recorded for ' + esc(semLabel()) + " yet." + (S.isLead ? " Press <b>Scan SharePoint</b> to read the folders." : "") + "</td></tr>"; return; }
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="13" class="empty">' + (S.scope === "mine" ? "No course files are linked to your email yet. Switch to <b>All</b> to browse." : "No course files match these filters.") + "</td></tr>"; return; }
+    var order = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
+    list.sort(function (a, b) { var pa = order.indexOf(a.programShort), pb = order.indexOf(b.programShort); if (pa !== pb) return pa - pb; return (a.course + a.section).localeCompare(b.course + b.section); });
+    var html = "", last = "";
+    list.forEach(function (c) {
+      if (c.programShort !== last) { last = c.programShort; html += '<tr class="prog"><td colspan="13">' + esc(last) + "</td></tr>"; }
+      var sc = scan(c), st = sc.state, rv = (c.review || {}).status || "pending", oc = openComments(c.id).length;
+      var items = {}; (sc.items || []).forEach(function (i) { items[i.k] = i; });
+      var cells = ""; for (var k = 1; k <= 7; k++) cells += '<td class="cell">' + cellHTML(items[k], st) + "</td>";
+      var col = st === "complete" ? "var(--ok)" : st === "in_progress" ? "var(--part)" : "var(--none)";
+      html += '<tr data-id="' + esc(c.id) + '" tabindex="0">' +
+        '<td><div class="ccode">' + esc(c.course) + '</div><div class="csub">' + esc(c.section && !c.instructor ? c.section : stateLabel(dstate(c))) + (isOverdue(c) && st !== "not_started" ? ' · <span class="state overdue">Overdue</span>' : "") + (st === "not_started" && dueFor(c) && !isOverdue(c) ? ' · due ' + esc(fmtDate(dueFor(c))) : "") + "</div></td>" +
+        "<td>" + (c.instructor ? esc(c.instructor) : '<span class="muted">Not set</span>') + "</td>" +
+        "<td>" + (c.term ? esc(c.term) : '<span class="muted">—</span>') + "</td>" + cells +
+        '<td><div class="ring" style="--p:' + sc.score + ";--c:" + col + '"><b>' + sc.score + "%</b></div></td>" +
+        '<td><span class="state ' + rv + '">' + ({ pending: "Not reviewed", approved: "Approved", revise: "Needs revision" }[rv]) + "</span></td>" +
+        "<td>" + (oc ? '<span class="cm">● ' + oc + " open</span>" : '<span class="muted">—</span>') + "</td></tr>";
+    });
+    tb.innerHTML = html;
+  }
+  function renderFilters() {
+    var cs = semCourses();
+    var progs = Array.from(new Set(cs.map(function (c) { return c.programShort; }))).sort();
+    var insts = Array.from(new Set(cs.map(function (c) { return c.instructor; }).filter(Boolean))).sort();
+    fillSelect($("fProg"), "All programs", progs, S.filters.prog);
+    fillSelect($("fInst"), "All instructors", insts, S.filters.inst);
+  }
+  function fillSelect(el, first, vals, cur) { el.innerHTML = '<option value="">' + first + "</option>" + vals.map(function (v) { return "<option" + (v === cur ? " selected" : "") + ">" + esc(v) + "</option>"; }).join(""); }
+  function renderHeader() {
+    var so = semOptions(), ss = $("semSel"), cur = semKey();
+    ss.innerHTML = so.map(function (o) { return '<option value="' + esc(o.k) + '"' + (o.k === cur ? " selected" : "") + ">" + esc(semLabelOf(o.k)) + (o.n ? " (" + o.n + ")" : "") + "</option>"; }).join("");
+    var ls = semLastScan();
+    $("scanLine").textContent = ls ? "Checked against SharePoint " + fmtDT(ls.at) : "Not scanned yet";
+    $("leadActions").hidden = !S.isLead;
+    var sp = $("scanProg"), cur = sp.value, pf = programFolders();
+    if (sp.options.length !== pf.length + 1) { sp.innerHTML = '<option value="">All programs</option>' + pf.map(function (p) { return '<option value="' + esc(p) + '">' + esc(CF.programShort(p)) + "</option>"; }).join(""); sp.value = cur; }
+    $("scopeSeg").hidden = !S.courses.some(mine);
+    Array.prototype.forEach.call($("scopeSeg").querySelectorAll("button"), function (b) { b.setAttribute("aria-pressed", b.dataset.scope === S.scope); });
+  }
+  function renderAll() { renderHeader(); renderFilters(); renderSummary(); renderGrid(); if (S.open && S.open !== "__new" && S.open !== "__panel") renderSheet(); if (S.open === "__panel" && S._panelIs === "rem") renderReminders(); }
+
+  /* ---------- detail sheet ---------- */
+  function course(id) { return S.courses.find(function (c) { return c.id === id; }); }
+  function openSheet(id) { S.open = id; $("sheet").hidden = false; $("scrim").hidden = false; renderSheet(); try { $("sheet").querySelector(".x").focus(); } catch (e) {} }
+  function closeSheet() { S.open = null; $("sheet").hidden = true; $("scrim").hidden = true; }
+  function personName(uid) { return (S.names[uid] && S.names[uid].name) || "Someone"; }
+
+  function programFolders() {
+    var m = {}; S.courses.forEach(function (c) { if (c.program) m[c.program] = 1; });
+    ["Professional Postgraduate Diploma in Teaching (English)", "MEd in Educational Leadership", "MEd Educational Technologies and AI", "Doctor of Philosophy in Education"].forEach(function (p) { m[p] = 1; });
+    return Object.keys(m);
+  }
+  function inp(id, val, ph, w) { return '<input id="' + id + '" value="' + esc(val || "") + '" placeholder="' + esc(ph || "") + '" style="border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 9px;width:' + (w || "100%") + '">'; }
+  function renderAddSheet() {
+    var h = '<div class="sheet-head"><div class="row"><div style="display:grid;gap:4px"><span class="eyebrow">New course file</span><h2 id="dTitle" style="font-size:1.3rem">Add a course file</h2></div><button class="x" type="button" aria-label="Close">×</button></div></div>' +
+      '<div class="sheet-body"><div class="settings-grid">' +
+      '<label for="nProg">Program<select id="nProg">' + programFolders().map(function (p) { return "<option>" + esc(p) + "</option>"; }).join("") + "</select></label>" +
+      '<label for="nCourse">Course folder name' + inp("nCourse", "", "e.g. EDUL680B") + "</label>" +
+      '<label for="nSection">Instructor/section folder (optional)' + inp("nSection", "", "e.g. Politis,Yurgos") + "</label>" +
+      '<label for="nInst">Instructor' + inp("nInst", "", "Name") + "</label>" +
+      '<label for="nEmail">Email' + inp("nEmail", "", "name@adu.ac.ae") + "</label>" +
+      '<label for="nTerm">Term<select id="nTerm"><option value="">Not set</option>' + TERMS.map(function (t) { return "<option>" + t + "</option>"; }).join("") + "</select></label>" +
+      '<label for="nStud">Students<input id="nStud" type="number" min="0" placeholder="?"></label></div>' +
+      '<p class="note">Use the exact folder names you use (or will use) on SharePoint, so the next scan links this course file to its folder. Folio does not create the SharePoint folder.</p>' +
+      '<div class="actions"><button class="btn primary" type="button" id="nCreate">Add course file</button></div></div>';
+    $("sheet").innerHTML = h;
+  }
+  function renderSheet() {
+    if (S.open === "__new") return renderAddSheet();
+    if (S.open === "__panel") return;
+    var c = course(S.open); if (!c) { closeSheet(); return; }
+    var sc = scan(c), rv = (c.review || {}).status || "pending";
+    var keepDraft = {}; if (S._mailFor === S.open) ["eSubj", "eBody", "eTo", "eCc"].forEach(function (k) { var el = $(k); if (el) keepDraft[k] = el.value; }); ["cText", "cSec", "dCourse", "dSection"].forEach(function (k) { var el = $(k); if (el) keepDraft[k] = el.value; });
+    var items = {}; (sc.items || []).forEach(function (i) { items[i.k] = i; });
+    var cms = S.comments.filter(function (m) { return m.courseId === c.id; }).sort(function (a, b) { return (a.at || "").localeCompare(b.at || ""); });
+    var issuesBySec = {}; cms.forEach(function (m) { if (m.kind === "issue" && m.status !== "resolved") issuesBySec[m.sec || 0] = (issuesBySec[m.sec || 0] || 0) + 1; });
+    var lead = S.isLead;
+    var termSel = lead ? '<select id="mTerm" aria-label="Term"><option value="">Term not set</option>' + TERMS.map(function (t) { return "<option" + (c.term === t ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" : esc(c.term || "Term not set");
+    var instEd = lead ? '<input id="mInst" value="' + esc(c.instructor || "") + '" placeholder="Instructor name" aria-label="Instructor" style="width:150px"> <input id="mEmail" value="' + esc(c.email || "") + '" placeholder="email@adu.ac.ae" aria-label="Instructor email" style="width:190px"> <label class="note" for="mStud">Students</label> <input id="mStud" type="number" min="0" value="' + esc(c.enrolled || "") + '" placeholder="?" style="width:64px"> <button class="btn small" type="button" id="mSave">Save</button>' : esc(c.instructor || "Instructor not set") + (c.email ? ' · <span class="copyable">' + esc(c.email) + "</span>" : "") + (c.enrolled ? " · " + esc(c.enrolled) + " students" : "");
+
+    var h = '<div class="sheet-head"><div class="row"><div style="display:grid;gap:4px;min-width:0"><span class="eyebrow">' + esc(c.programShort) + '</span><h2 id="dTitle" style="font-size:1.3rem"><span class="ccode" style="font-size:1rem">' + esc(c.course) + "</span>" + (c.section ? ' <span class="muted" style="font-weight:500;font-size:.9rem">· ' + esc(c.section) + "</span>" : "") + '</h2></div><button class="x" type="button" aria-label="Close">×</button></div>' +
+      '<div class="meta">' + instEd + "</div>" +
+      '<div class="meta"><span>' + termSel + "</span>" + (dueFor(c) ? "<span>Due " + fmtDate(dueFor(c)) + "</span>" : "") + '<span class="state ' + dstate(c) + '">' + stateLabel(dstate(c)) + " · " + sc.score + '%</span><a href="' + esc(folderUrl(c.path)) + '" target="_blank" rel="noopener">Open folder in SharePoint ↗</a>' + (lead ? '<button class="btn small" type="button" id="btnRescan">Rescan this course file</button><button class="btn small" type="button" id="btnExpCourse">Export…</button>' : "") + "</div></div>";
+
+    h += '<div class="sheet-body">';
+    if (c.scanNote) h += '<div class="banner warn">' + esc(c.scanNote) + "</div>";
+    // review decision
+    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Reviewer decision</h3>' +
+      (lead ? '<div class="decide"><button type="button" class="btn ap" data-review="approved" aria-pressed="' + (rv === "approved") + '">✓ Approve course file</button><button type="button" class="btn rv" data-review="revise" aria-pressed="' + (rv === "revise") + '">Needs revision</button><button type="button" class="btn" data-review="pending" aria-pressed="' + (rv === "pending") + '">Not reviewed</button></div>' : '<div><span class="state ' + rv + '">' + ({ pending: "Not reviewed yet", approved: "Approved", revise: "Needs revision" }[rv]) + "</span></div>") +
+      ((c.review || {}).at ? '<span class="note">Updated ' + fmtDT(c.review.at) + "</span>" : "") + "</section>";
+    // Department rules
+    var nd = need(c);
+    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Department rules</h3><div class="checks" style="padding:12px 14px;display:grid;gap:6px;font-size:.86rem">' +
+      "<div>Graded samples required: <b>" + nd + " High, " + nd + " Medium, " + nd + " Low</b> per assessment " + (c.enrolled ? "(class of " + esc(c.enrolled) + ")" : '<span class="muted">(class size not recorded, so the minimum of 1 is applied)</span>') + "</div>" +
+      "<div>Syllabus must state the section and campus" + (sc.syllabus ? (sc.syllabus.read ? " · " + esc(sc.syllabus.file || "") + ": campus " + (sc.syllabus.campus ? "✓" : "✕") + ", section " + (sc.syllabus.section ? "✓" : "✕") + ", office hours " + (sc.syllabus.office ? "✓" : "✕") + ", faculty name " + (sc.syllabus.faculty ? "✓" : "✕") : " · the current syllabus could not be read") : ' <span class="muted">(checked at the next scan)</span>') + "</div>" +
+      (c.emailedAt ? "<div>Instructor emailed " + fmtDT(c.emailedAt) + "</div>" : "") + "</div></section>";
+
+    // checklist
+    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Checklist against the model course file</h3><div class="checks">';
+    CF.SECTIONS.forEach(function (s) {
+      var it = items[s.k];
+      var cls = sc.state === "not_started" ? "none" : (it ? it.s : "miss");
+      var sym = { ok: "✓", part: "!", miss: "✕", none: "·" }[cls];
+      h += '<div class="ck"><span class="dot ' + cls + '">' + sym + '</span><div><h3>' + s.k + ". " + esc(s.label) + "</h3><p>" + esc(sc.state === "not_started" ? (isOverdue(c) ? "Nothing uploaded yet." : "Nothing uploaded yet. Not due until " + (dueFor(c) ? fmtDate(dueFor(c)) : "the end of the term") + ".") : (it ? it.note : "")) + "</p></div>" +
+        '<div style="display:grid;gap:4px;justify-items:end">' + (issuesBySec[s.k] ? '<span class="cm cmc">● ' + issuesBySec[s.k] + "</span>" : "") + (lead ? '<button type="button" class="btn small" data-addc="' + s.k + '">Comment</button>' : "") +
+        (lead && it && sc.state !== "not_started" ? (it.accepted ? '<button type="button" class="btn small" data-accept="' + s.k + '" data-on="0" title="Go back to the automatic result">Undo accept</button>' : (it.s !== "ok" ? '<button type="button" class="btn small" data-accept="' + s.k + '" data-on="1" title="Count this item as done (for example, checked manually)">Accept as done</button>' : "")) : "") + "</div></div>";
+    });
+    h += "</div></section>";
+
+    // assessments
+    if ((sc.assessments || []).length) {
+      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Assessment evidence</h3><div style="overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px"><table class="amx"><thead><tr><th>Assessment</th><th>Instrument</th><th>Key / rubric</th><th>High</th><th>Medium</th><th>Low</th></tr></thead><tbody>';
+      sc.assessments.forEach(function (a) {
+        var yn = function (b) { return b ? '<span class="yes">✓</span>' : '<span class="no">✕</span>'; };
+        var nn = function (n) { return n ? '<span class="yes">✓</span>' : '<span class="no">✕</span>'; };
+        h += "<tr><td>" + esc(a.name) + "</td><td>" + yn(a.ins) + "</td><td>" + yn(a.key) + "</td><td>" + nn(a.h) + "</td><td>" + nn(a.m) + "</td><td>" + nn(a.l) + "</td></tr>";
+      });
+      h += '</tbody></table></div><span class="note">✓ under High / Medium / Low means at least one graded sample is in that folder. Student work is never listed.</span></section>';
+    }
+
+    // auto issues
+    if ((sc.issues || []).length) {
+      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Found by the automatic check</h3><ul class="issues">' + sc.issues.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></section>";
+    }
+
+    // comments
+    h += '<section style="display:grid;gap:10px"><h3 style="font-size:.95rem">Review comments</h3><div class="thread">';
+    var roots = cms.filter(function (m) { return !m.parent; });
+    if (!roots.length) h += '<p class="note">No comments yet.</p>';
+    roots.forEach(function (m) {
+      h += commentHTML(m, c);
+      cms.filter(function (r) { return r.parent === m.id; }).forEach(function (r) { h += commentHTML(r, c, true); });
+    });
+    h += "</div>";
+    if (S.db) {
+      h += '<div class="composer"><div class="row"><label for="cSec" class="note">About</label><select id="cSec"><option value="0">Whole course file</option>' + CF.SECTIONS.map(function (s) { return '<option value="' + s.k + '">' + s.k + ". " + esc(s.short) + "</option>"; }).join("") + '</select></div><textarea id="cText" placeholder="' + (lead ? "Write a comment or issue for the instructor…" : "Write a note to the reviewer…") + '"></textarea><div class="row"><button class="btn primary" type="button" id="cPost">' + (lead ? "Add comment" : "Send note") + "</button></div></div>";
+    }
+    h += "</section>";
+
+    // email
+    if (lead) {
+      var mail = buildEmail(c);
+      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Email the instructor</h3><div class="composer">' +
+        '<input id="eTo" value="' + esc(c.email || "") + '" placeholder="instructor@adu.ac.ae" aria-label="To">' +
+        '<input id="eCc" value="" placeholder="Cc (optional)" aria-label="Cc">' +
+        '<input id="eSubj" value="' + esc(mail.subject) + '" aria-label="Subject">' +
+        '<textarea id="eBody" style="min-height:200px" aria-label="Message">' + esc(mail.body) + "</textarea>" +
+        '<div class="row"><a class="btn primary" id="eOutlook" target="_blank" rel="noopener" href="#">Open in Outlook ↗</a><button class="btn" type="button" id="eCopy">Copy message</button><button class="btn" type="button" id="eMark">Mark as emailed</button></div>' +
+        '<span class="note">Outlook opens a new message with this text in your browser. Check it and press Send there.</span></div></section>';
+    }
+    if (lead) {
+      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Course details</h3><div class="settings-grid">' +
+        '<label for="dCourse">Course name' + inp("dCourse", c.course) + "</label>" +
+        '<label for="dSection">Section / folder label' + inp("dSection", c.section) + "</label>" +
+        '<label for="dProg">Program<select id="dProg">' + programFolders().map(function (p) { return "<option" + (p === c.program ? " selected" : "") + ">" + esc(p) + "</option>"; }).join("") + "</select></label></div>" +
+        '<div class="actions"><button class="btn" type="button" id="dSave">Save details</button><button class="btn" type="button" id="dRemove" style="color:var(--miss);border-color:var(--miss)">Remove from Folio</button></div>' +
+        '<span class="note">Changing the name here does not rename the SharePoint folder. Removing hides this course file from Folio (scans will not bring it back); the SharePoint folder is not touched. You can restore it in Settings.</span></section>';
+    }
+    h += "</div>";
+    $("sheet").innerHTML = h; S._mailFor = S.open;
+    Object.keys(keepDraft).forEach(function (k) { var el = $(k); if (el && keepDraft[k]) el.value = keepDraft[k]; });
+    syncOutlook();
+  }
+  function commentHTML(m, c, isReply) {
+    var lead = S.isLead, mineC = S.me && m.by === S.me;
+    var st = m.kind === "issue" ? '<span class="st-' + m.status + '">' + ({ open: "● Open", fixed: "◐ Instructor says fixed", resolved: "✓ Resolved" }[m.status] || "") + "</span>" : "";
+    var sec = m.sec ? "Folder " + m.sec + " · " + CF.SECTIONS[m.sec - 1].short : "Whole course file";
+    var acts = "";
+    if (m.kind === "issue" && !isReply) {
+      if (!lead && m.status === "open") acts += '<button class="btn small" type="button" data-cstat="fixed" data-cid="' + m.id + '">I have fixed this</button>';
+      if (lead && m.status !== "resolved") acts += '<button class="btn small" type="button" data-cstat="resolved" data-cid="' + m.id + '">Resolve</button>';
+      if (lead && m.status === "resolved") acts += '<button class="btn small" type="button" data-cstat="open" data-cid="' + m.id + '">Reopen</button>';
+    }
+    if (!isReply && S.db) acts += '<button class="btn small" type="button" data-reply="' + m.id + '">Reply</button>';
+    if ((lead || mineC)) acts += '<button class="btn small" type="button" data-cdel="' + m.id + '">Delete</button>';
+    return '<div class="cmt' + (isReply ? " reply" : "") + '"><div class="h"><b>' + esc(personName(m.by)) + "</b><span>" + (m.role === "lead" ? "Reviewer" : "Instructor") + "</span><span>" + fmtDT(m.at) + "</span>" + (isReply ? "" : "<span>" + sec + "</span>") + st + '</div><div class="t">' + esc(m.text) + "</div>" + (acts ? '<div class="acts">' + acts + "</div>" : "") + '<div class="replybox" data-for="' + m.id + '" hidden></div></div>';
+  }
+
+  function salute(name) { name = (name || "").trim(); if (!name) return "Dear colleague,"; if (/^dr\.?\s/i.test(name)) return "Dear Dr. " + name.replace(/^dr\.?\s+/i, "").split(/\s+/)[0] + ","; return "Dear Dr. " + name.split(/\s+/)[0] + ","; }
+  function buildEmail(c) {
+    var sc = scan(c), lines = [], first = (c.instructor || "").split(" ")[0];
+    var sem = semLabel();
+    lines.push(salute(c.instructor), "");
+    lines.push("Thank you for preparing the course file for " + c.course + (c.section && !c.instructor ? " (" + c.section + ")" : "") + ", " + sem + ". I have reviewed it against the department's model course file.", "");
+    var status = sc.state === "not_started" ? "The course file folder is still empty." : "Current status: " + sc.score + "% complete.";
+    lines.push(status);
+    var miss = (sc.items || []).filter(function (i) { return i.s !== "ok"; });
+    if (sc.state !== "not_started" && miss.length) {
+      lines.push("", "Items to complete:");
+      miss.forEach(function (i) { lines.push("- " + i.k + ". " + CF.SECTIONS[i.k - 1].short + ": " + i.note); });
+    }
+    if ((sc.issues || []).length) { lines.push("", "Details:"); sc.issues.forEach(function (x) { lines.push("- " + x); }); }
+    var oc = openComments(c.id);
+    if (oc.length) { lines.push("", "Reviewer comments:"); oc.forEach(function (m) { lines.push("- " + (m.sec ? CF.SECTIONS[m.sec - 1].short + ": " : "") + m.text); }); }
+    if (sc.state === "complete" && !oc.length) lines.push("", "All seven sections are in place. Thank you.");
+    var nd = need(c);
+    lines.push("", "Reminder: please upload " + nd + " High, " + nd + " Medium and " + nd + " Low graded sample" + (nd > 1 ? "s" : "") + " for each assessment, and make sure the syllabus states the section and campus.");
+    lines.push("", "Course file folder: " + folderUrl(c.path));
+    if (S.config.link) lines.push("You can see the full review and reply to comments here: " + S.config.link);
+    return { subject: "Course file review: " + c.course + " (" + sem + ")", body: lines.join("\n") };
+  }
+  function syncOutlook() {
+    var a = $("eOutlook"); if (!a) return;
+    var to = $("eTo").value.trim(), cc = ($("eCc") ? $("eCc").value.trim() : ""), su = $("eSubj").value, bo = $("eBody").value;
+    a.href = "https://outlook.office.com/mail/deeplink/compose?to=" + encodeURIComponent(to) + (cc ? "&cc=" + encodeURIComponent(cc) : "") + "&subject=" + encodeURIComponent(su) + "&body=" + encodeURIComponent(bo);
+  }
+
+  /* ---------- writes ---------- */
+  function upd(id, data) { return S.db.collection("courses").doc(id).update(data).catch(function (e) { toast("Could not save: " + (e && e.message || e)); throw e; }); }
+  function addComment(c, sec, text, parent) {
+    var doc = { courseId: c.id, sec: +sec || 0, text: text, by: S.me, role: S.isLead ? "lead" : "instructor", at: nowISO(), kind: parent ? "reply" : (S.isLead ? "issue" : "note"), status: parent ? "" : (S.isLead ? "open" : ""), parent: parent || "" };
+    return S.db.collection("comments").add(doc).then(function () { toast(S.isLead ? "Comment added" : "Note sent"); }).catch(function (e) { toast(e && e.code === "not_granted" ? "You need permission to comment. Ask the reviewer to share with 'can use'." : "Could not post the comment."); });
+  }
+
+  /* ---------- SharePoint scan via Microsoft 365 connector ---------- */
+  var ENTRY = /\s*(.+?) \((folder|file)[^)]*?(\d+) bytes[^)]*\) (file:\/\/\/[^\/\s]+\/[A-Za-z0-9]{34})/g;
+  function textOf(res) {
+    var t = [];
+    (res && res.content || []).forEach(function (b) { if (b && b.type === "text" && b.text) t.push(b.text); });
+    if (!t.length && typeof (res && res.payload) === "string") t.push(res.payload);
+    return t.join("\n");
+  }
+  async function listFolder(uri) {
+    var res;
+    try { res = await S.mcp.callTool(M365, "read_resource", { uri: uri }, { cache: false }); }
+    catch (e) {
+      // Microsoft Graph throttling arrives as a tool_error whose message says RATE_LIMITED.
+      var msg = String((e && e.message) || "") + JSON.stringify((e && e.result) || "");
+      if (/RATE_LIMITED|throttl|429|too many requests/i.test(msg)) { var r = new Error("Microsoft Graph asked us to slow down"); r.code = "rate_limited"; throw r; }
+      throw e;
+    }
+    var out = { files: [], folders: [] };
+    var txt = textOf(res), m; ENTRY.lastIndex = 0;
+    while ((m = ENTRY.exec(txt))) {
+      var nm = m[1].trim();
+      if (m[2] === "folder") out.folders.push({ name: nm, size: +m[3], uri: m[4] });
+      else out.files.push({ name: nm, size: +m[3], uri: m[4] });
+    }
+    if (!out.files.length && !out.folders.length && /bytes\)/.test(txt)) { var e = new Error("Could not read the folder listing"); e.code = "parse"; throw e; }
+    return out;
+  }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  var cooldownUntil = 0, lastCall = 0, GAP = 350;
+  async function throttle() {
+    for (;;) {
+      var now = Date.now(), next = Math.max(cooldownUntil, lastCall + GAP);
+      if (now >= next) { lastCall = now; return; }
+      await wait(next - now);
+    }
+  }
+  async function listWithRetry(uri) {
+    var last;
+    for (var i = 0; i < 7; i++) {
+      await throttle();
+      try { return await listFolder(uri); }
+      catch (e) {
+        last = e;
+        var fatal = ["server_not_connected", "needs_reauth", "not_in_manifest", "approval_required", "blocked_by_policy", "not_granted", "capability_disabled"].indexOf(e && e.code) >= 0;
+        if (fatal) throw e;
+        if (e && e.code === "rate_limited") {
+          // Pause the whole scan, not just this folder, then try again.
+          var pause = Math.min(30000, 4000 * Math.pow(2, i));
+          cooldownUntil = Math.max(cooldownUntil, Date.now() + pause);
+          S.scanPaused = Math.ceil(pause / 1000);
+          continue;
+        }
+        if (e && e.code === "tool_error" && i >= 1) break;
+        if (i >= 3) break;
+        await wait((e && e.retryAfterMs) || (800 * Math.pow(2, i) + Math.random() * 400));
+      }
+    }
+    throw last;
+  }
+  // Folders whose contents only need to be "not empty": teaching-material sub-folders and graded High/Medium/Low folders.
+  function sizeOnly(parentName) {
+    return /^\s*3(?![0-9])|material|teaching|instruction/i.test(parentName || "") && CF.secNum(parentName) !== 4 && !/assess|graded/i.test(parentName);
+  }
+  function isLevel(name) { return /\bhigh\b|medium|\bmed\b|\blow\b/i.test(name || ""); }
+  function allF(n) { var o = (n.files || []).slice(); (n.folders || []).forEach(function (f) { o = o.concat(allF(f)); }); return o; }
+  function findSyllabus(node) {
+    var s2 = (node.folders || []).filter(function (f) { return CF.secNum(f.name) === 2; })[0] || (node.folders || []).filter(function (f) { return /syllab/i.test(f.name); })[0];
+    if (!s2) return null;
+    var cur = (s2.folders || []).filter(function (f) { return /current|this|present/i.test(f.name); })[0];
+    var pool = (cur ? allF(cur) : (s2.files || [])).filter(function (f) { return f.uri && f.size > 0 && /\.(docx?|pdf)$/i.test(f.name); });
+    pool.sort(function (a, b) { return (/\.docx?$/i.test(b.name) ? 1 : 0) - (/\.docx?$/i.test(a.name) ? 1 : 0); });
+    return pool[0] || null;
+  }
+  async function readSyllabus(file, instructor) {
+    var res, last;
+    for (var i = 0; i < 6; i++) {
+      await throttle();
+      try { res = await S.mcp.callTool(M365, "read_resource", { uri: file.uri, startPage: 1, endPage: 3 }, { cache: false }); break; }
+      catch (e) {
+        last = e; var msg = String((e && e.message) || "") + JSON.stringify((e && e.result) || "");
+        if (/RATE_LIMITED|throttl|429/i.test(msg)) { cooldownUntil = Math.max(cooldownUntil, Date.now() + Math.min(30000, 4000 * Math.pow(2, i))); continue; }
+        return { read: false, file: file.name };
+      }
+    }
+    if (!res) return { read: false, file: file.name };
+    var t = textOf(res), last2 = norm(instructor || "").split(" ").filter(function (w) { return w.length > 2; }).pop();
+    return {
+      read: true, file: file.name,
+      campus: /abu\s*dhabi|al\s*ain|dubai/i.test(t),
+      section: /\bsection\b|\bsec\.?\s*[:#-]?\s*\d/i.test(t),
+      office: /office\s*hours?/i.test(t),
+      faculty: last2 ? norm(t).indexOf(last2) >= 0 : false
+    };
+  }
+  async function scanSharePoint(opts) {
+    opts = opts || {};
+    if (S.scanning) return;
+    if (!S.mcp) { banner("err", "Scanning needs the Microsoft 365 connector. Open this page in claude.ai with Microsoft 365 connected."); return; }
+    S.scanning = true; $("btnScan").disabled = true;
+    var done = 0, queued = 1, reusedN = 0;
+    var show = function () { banner("", '<b>Reading SharePoint…</b><span class="note">' + done + " of " + queued + " folders" + (reusedN ? " · " + reusedN + " unchanged course files skipped" : "") + (Date.now() < cooldownUntil ? " · Microsoft asked us to slow down, pausing a few seconds" : "") + '</span><span class="progress"><i style="width:' + Math.round(done / Math.max(queued, 1) * 100) + '%"></i></span>'); };
+    show();
+    var deptUri = "file:///" + DRIVE + "/" + semKey() + "/" + DEPT;
+    var single = opts.courseId ? course(opts.courseId) : null;
+    var errors = 0;
+    try {
+      var tree = { name: DEPT, files: [], folders: [] }, errCodes = {}, startJob;
+      if (single) {
+        // Rescan one course file: build the path down to its folder and start there.
+        var relS = single.path.slice(basePath().length + 1), parts = relS.split("/"), node = tree;
+        for (var pi = 0; pi < parts.length; pi++) { var nn = { name: parts[pi], files: [], folders: [] }; node.folders.push(nn); node = nn; }
+        startJob = { node: node, uri: deptUri + "/" + relS, depth: parts.length, size: 1, rel: relS, isStart: true };
+      } else startJob = { node: tree, uri: deptUri, depth: 0, size: 1, rel: "", isStart: true };
+      var pending = [startJob], softSkip = {}, failNames = [], sizeByRel = {};
+      var byPath = {}; S.courses.forEach(function (c) { if (c.path) byPath[c.path] = c; });
+      var active = 0;
+      await new Promise(function (resolve, reject) {
+        function pump() {
+          if (!pending.length && !active) return resolve();
+          while (active < 1 && pending.length) {
+            var job = pending.shift(); active++;
+            (function (job) {
+              listWithRetry(job.uri).then(function (r) {
+                job.node.files = r.files;
+                if (job.level) {
+                  // A High/Medium/Low folder: each file or sub-folder inside it is one graded sample.
+                  job.node.files = r.files.concat(r.folders.map(function (f) { return { name: "(sample folder)", size: f.size }; }));
+                  job.node.folders = []; return;
+                }
+                var isRootListing = r.folders.filter(function (f) { return CF.secNum(f.name); }).length >= 2;
+                job.node.folders = r.folders.map(function (f) {
+                  var n = { name: f.name, files: [], folders: [] }, cd = job.depth + 1, rel = job.rel ? job.rel + "/" + f.name : f.name;
+                  if (cd === 1 && opts.prog && f.name !== opts.prog) { n.outOfScope = true; return n; }
+                  if (cd === 2 || cd === 3) {
+                    sizeByRel[rel] = f.size;
+                    var ex = byPath[basePath() + "/" + rel];
+                    var approved = ex && ex.review && ex.review.status === "approved";
+                    if (!opts.full && ex && !ex.gone && !ex.removed && ex.scan && (approved || (f.size > 0 && ex.folderSize === f.size))) { n.reuse = ex.id; reusedN++; return n; }
+                  }
+                  if (cd === 3 && f.size === 0 && !isRootListing) return n; // empty instructor folder: nothing to read
+                  if (job.depth >= 3 && sizeOnly(job.node.name)) { if (f.size > 0) n.files = [{ name: "(contents)", size: f.size }]; return n; }
+                  if (job.depth >= 3 && isLevel(f.name) && f.size === 0) return n;
+                  pending.push({ node: n, uri: f.uri, depth: cd, size: f.size, level: job.depth >= 3 && isLevel(f.name), rel: rel }); queued++; return n;
+                });
+              }).catch(function (e) {
+                if (job.isStart) { reject(e); return; }
+                if (job.size === 0 && job.depth >= 3) return;
+                if (job.size === 0 && job.depth === 2) { softSkip[basePath() + "/" + job.rel] = 1; return; }
+                if (failNames.length < 4) failNames.push(job.rel.split("/").slice(-2).join(" / ") + (e && e.message ? " (" + String(e.message).slice(0, 80) + ")" : ""));
+                errors++; job.node.failed = true; var ec = (e && e.code) || "error"; errCodes[ec] = (errCodes[ec] || 0) + 1;
+              }).then(function () { active--; done++; show(); pump(); });
+            })(job);
+          }
+        }
+        pump();
+      });
+      CF.setYear(curYear());
+      // Keep only programs that were in scope.
+      tree.folders = tree.folders.filter(function (p) { return !p.outOfScope; });
+      var rows = CF.rows(tree, basePath());
+      rows.forEach(function (r) { r.id = rid(r.path.slice(basePath().length + 1)); });
+      if (single) rows = rows.filter(function (r) { return r.path === single.path; });
+      function hasFail(n) { return !!(n.failed || (n.folders || []).some(hasFail)); }
+      var failedPaths = {};
+      (function mark(n, rel, depth) { (n.folders || []).forEach(function (f) { var r2 = rel ? rel + "/" + f.name : f.name; if (depth >= 1 && hasFail(f)) failedPaths[basePath() + "/" + r2] = 1; mark(f, r2, depth + 1); }); })(tree, "", 0);
+      function rowFailed(r) { return Object.keys(failedPaths).some(function (p) { return r.path === p || r.path.indexOf(p + "/") === 0 || p.indexOf(r.path + "/") === 0; }); }
+      var skipped = 0;
+      function soft(r) { return Object.keys(softSkip).some(function (p) { return r.path === p || r.path.indexOf(p + "/") === 0; }); }
+      var existing = {}; S.courses.forEach(function (c) { existing[c.id] = c; });
+      function isReused(r) { return r.node && r.node.reuse; }
+      // Read each current syllabus (only for course files that changed).
+      var toRead = rows.filter(function (r) { return !isReused(r) && r.scan.state !== "not_started" && r.node && !rowFailed(r); });
+      for (var j = 0; j < toRead.length; j++) {
+        var rr = toRead[j], sf = findSyllabus(rr.node);
+        banner("", "<b>Reading syllabi…</b><span class=\"note\">" + (j + 1) + " of " + toRead.length + "</span>");
+        if (sf) rr.scan.syllabus = await readSyllabus(sf, (existing[rr.id] && existing[rr.id].instructor) || rr.instructorFromFolder);
+      }
+      var people = {}; S.people.forEach(function (p) { people[(p.name || "").toLowerCase()] = p; });
+      var at = nowISO(), col = S.db.collection("courses"), updatedN = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i], ex = existing[r.id];
+        if (isReused(r)) continue;
+        if (soft(r)) { if (ex) continue; }
+        if (rowFailed(r)) { skipped++; if (ex) await col.doc(r.id).update({ scanNote: "Last scan could not read every folder; showing the previous result." }); continue; }
+        if (ex && ex.removed) continue; // removed by the reviewer: leave it hidden
+        var relR = r.path.slice(basePath().length + 1);
+        var scanData = { gone: false, manual: false, scanNote: "", scan: r.scan, scannedAt: at, path: r.path, program: r.program, programShort: r.programShort, course: r.course, section: r.section, semester: semKey(), folderSize: sizeByRel[relR] != null ? sizeByRel[relR] : (single && ex ? ex.folderSize || 0 : 0) };
+        updatedN++;
+        if (ex) await col.doc(r.id).update(scanData);
+        else {
+          var nm = r.instructorFromFolder, p = people[(nm || "").toLowerCase()];
+          await col.doc(r.id).set(Object.assign(scanData, { instructor: p ? p.name : nm, email: p ? p.email : "", term: /diploma/i.test(r.program) ? "Full semester" : "", review: { status: "pending" } }));
+        }
+      }
+      if (single && !rows.length) { banner("warn", "<b>The folder for this course file was not found on SharePoint.</b> <span>It may have been renamed or moved. Run a program scan to pick up the new name.</span>"); S.scanning = false; $("btnScan").disabled = false; return; }
+      // Course files whose folder no longer exists on SharePoint are hidden (kept in the database with their comments).
+      if (!errors && !single) {
+        var seen = {}; rows.forEach(function (r) { seen[r.id] = 1; });
+        for (var g = 0; g < S.courses.length; g++) {
+          var oc = S.courses[g];
+          if (opts.prog && oc.program !== opts.prog) continue;
+          if (!seen[oc.id] && !oc.gone && !oc.manual && (oc.semester || "2026 - 2027/Fall") === semKey()) await col.doc(oc.id).update({ gone: true });
+        }
+      }
+      var cfg = Object.assign({}, S.config);
+      if (!single) {
+        cfg.lastScanBySem = Object.assign({}, cfg.lastScanBySem || {});
+        if (semKey() !== FALL26 && !cfg.lastScanBySem[FALL26] && cfg.lastScan) cfg.lastScanBySem[FALL26] = cfg.lastScan;
+        cfg.lastScanBySem[semKey()] = { at: at, folders: done, errors: errors, scope: opts.prog || "All programs", full: !!opts.full };
+        cfg.lastScanByProg = Object.assign({}, cfg.lastScanByProg || {});
+        (opts.prog ? [opts.prog] : tree.folders.map(function (p) { return p.name; })).forEach(function (p) { cfg.lastScanByProg[p] = at; });
+        await S.db.collection("config").doc("settings").set(cfg);
+      }
+      var codes = Object.keys(errCodes).map(function (k) { return k + " ×" + errCodes[k]; }).join(", ");
+      banner(errors ? "warn" : "", errors
+        ? "<b>" + (rows.length - skipped) + " of " + rows.length + " course files updated.</b> <span>SharePoint did not answer for " + errors + " folders (" + esc(codes) + "), so " + skipped + " course files keep their previous result. Press Scan again to retry them.</span>" + (failNames.length ? '<span class="note" style="flex-basis:100%">Not read: ' + esc(failNames.join("; ")) + "</span>" : "")
+        : single ? "<b>Course file rescanned.</b>"
+        : "<b>Scan complete" + (opts.prog ? " for " + esc(CF.programShort(opts.prog)) : "") + ".</b> <span class=\"note\">" + updatedN + " course files checked, " + reusedN + " unchanged or approved and skipped, " + done + " folders read.</span>");
+      setTimeout(function () { if (!errors) banner(); }, 7000);
+    } catch (e) {
+      var code = e && e.code;
+      var msg = code === "server_not_connected" ? "Add the Microsoft 365 connector in claude.ai Settings → Connectors, then scan again."
+        : code === "needs_reauth" ? "Reconnect Microsoft 365 in claude.ai Settings → Connectors, then scan again."
+        : code === "not_in_manifest" || code === "approval_required" ? "This page needs your permission to read SharePoint through Microsoft 365. Press Scan again and choose Allow."
+        : code === "tool_error" ? (single ? "SharePoint could not open this course file's folder. It may have been renamed or moved." : "SharePoint could not open the " + esc(semKey()) + " Department of Education folder. Check the year and semester in Settings.")
+        : "The scan stopped: " + esc(e && e.message || String(e));
+      banner("err", msg);
+    }
+    S.scanning = false; $("btnScan").disabled = false;
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener("click", function (ev) {
+    var t = ev.target.closest("button, a, tr[data-id]"); if (!t) return;
+    if (t.matches("tr[data-id]")) return openSheet(t.dataset.id);
+    if (t.dataset.kpi !== undefined) { S.filters.state = S.filters.state === t.dataset.kpi ? "" : t.dataset.kpi; $("fState").value = S.filters.state; return renderAll(); }
+    if (t.dataset.prog !== undefined) { S.filters.prog = S.filters.prog === t.dataset.prog ? "" : t.dataset.prog; return renderAll(); }
+    if (t.dataset.scope) { S.scope = t.dataset.scope; return renderAll(); }
+    if (t.id === "btnScan") return scanSharePoint({ prog: $("scanProg").value, full: $("scanFull").checked });
+    if (t.id === "btnReport") return downloadReport();
+    if (t.id === "btnExport") return openExport();
+    if (t.id === "sigRemove") { var nc = Object.assign({}, S.config); delete nc.signature; S.db.collection("config").doc("settings").set(nc).then(function () { toast("Signature removed"); setTimeout(fillSettings, 300); }); return; }
+    if (t.id === "btnExpCourse") return openExport(S.open);
+    if (t.dataset.expset) { S.exp[t.dataset.expset] = t.dataset.val; if (t.dataset.expset === "scope") S.exp.detail = t.dataset.val === "instructor"; return renderExport(); }
+    if (t.id === "expGo") return runExport();
+    if (t.id === "btnRemind") return renderReminders();
+    if (t.dataset.remcopy) { var gtxt = reminderBody(S._remGroups[+t.dataset.remcopy]); try { navigator.clipboard.writeText(gtxt).then(function () { toast("Copied"); }); } catch (e) {} return; }
+    if (t.dataset.remsent) { var gg = S._remGroups[+t.dataset.remsent]; Promise.all(gg.files.map(function (c) { return upd(c.id, { emailedAt: nowISO() }); })).then(function () { toast("Marked as sent"); }); return; }
+    if (t.id === "impApply") return applyImport();
+    if (t.dataset.impadd) return prefillAdd(S._imp.missing[+t.dataset.impadd]);
+    if (t.dataset.impopen) { closeSheet(); return openSheet(t.dataset.impopen); }
+    if (t.id === "btnRescan") { var rc = course(S.open); if (rc) scanSharePoint({ courseId: rc.id, full: true }); return; }
+    if (t.id === "btnAdd") { S.open = "__new"; $("sheet").hidden = false; $("scrim").hidden = false; renderAddSheet(); return; }
+    if (t.id === "nCreate") return createCourse();
+    if (t.dataset.restore) { upd(t.dataset.restore, { removed: false }).then(function () { toast("Restored"); fillSettings(); }); return; }
+    if (t.id === "btnSettings") { var p = $("settingsPanel"); p.hidden = !p.hidden; fillSettings(); return; }
+    if (t.id === "btnCloseSettings") { $("settingsPanel").hidden = true; return; }
+    if (t.id === "btnSaveSettings") return saveSettings();
+    if (t.classList.contains("x")) return closeSheet();
+    var c = course(S.open);
+    if (!c) return;
+    if (t.dataset.review) { upd(c.id, { review: { status: t.dataset.review, at: nowISO(), by: S.me } }).then(function () { toast("Decision saved"); }); return; }
+    if (t.id === "dSave") { var pr = $("dProg").value; upd(c.id, { course: $("dCourse").value.trim() || c.course, section: $("dSection").value.trim(), program: pr, programShort: CF.programShort(pr) }).then(function () { toast("Details saved"); }); return; }
+    if (t.id === "dRemove") {
+      if (t.dataset.confirm !== "1") { t.dataset.confirm = "1"; t.textContent = "Click again to remove"; return; }
+      upd(c.id, { removed: true, removedAt: nowISO() }).then(function () { toast("Removed from Folio"); closeSheet(); }); return;
+    }
+    if (t.id === "mSave") { upd(c.id, { instructor: $("mInst").value.trim(), email: $("mEmail").value.trim(), enrolled: +$("mStud").value || 0 }).then(function () { toast("Saved"); }); return; }
+    if (t.dataset.accept) {
+      var accs = Object.assign({}, c.accepted || {}), k = t.dataset.accept;
+      if (t.dataset.on === "1") accs[k] = { at: nowISO(), by: S.me }; else delete accs[k];
+      upd(c.id, { accepted: accs }).then(function () { toast(t.dataset.on === "1" ? "Item accepted as done" : "Back to the automatic result"); });
+      return;
+    }
+    if (t.dataset.addc) { var sel = $("cSec"); if (sel) { sel.value = t.dataset.addc; $("cText").focus(); } return; }
+    if (t.id === "cPost") { var tx = $("cText").value.trim(); if (!tx) return; addComment(c, $("cSec").value, tx).then(function () { var el = $("cText"); if (el) el.value = ""; }); return; }
+    if (t.dataset.cstat) { S.db.collection("comments").doc(t.dataset.cid).update({ status: t.dataset.cstat, statusAt: nowISO(), statusBy: S.me }).then(function () { toast(t.dataset.cstat === "fixed" ? "Reviewer will recheck this item" : "Updated"); }).catch(function () { toast("Could not update the comment."); }); return; }
+    if (t.dataset.cdel) {
+      if (t.dataset.confirm !== "1") { t.dataset.confirm = "1"; t.textContent = "Confirm delete"; return; }
+      S.db.collection("comments").doc(t.dataset.cdel).delete().catch(function () { toast("Could not delete."); }); return;
+    }
+    if (t.dataset.reply) {
+      var box = document.querySelector('.replybox[data-for="' + t.dataset.reply + '"]');
+      box.hidden = false; box.innerHTML = '<div class="composer"><textarea placeholder="Write a reply…"></textarea><div class="row"><button class="btn primary small" type="button" data-sendreply="' + t.dataset.reply + '">Send reply</button></div></div>';
+      box.querySelector("textarea").focus(); return;
+    }
+    if (t.dataset.sendreply) { var ta = t.closest(".composer").querySelector("textarea"); var v = ta.value.trim(); if (!v) return; addComment(c, 0, v, t.dataset.sendreply); return; }
+    if (t.id === "eCopy") {
+      var txt = "To: " + $("eTo").value + ($("eCc").value ? "\nCc: " + $("eCc").value : "") + "\nSubject: " + $("eSubj").value + "\n\n" + $("eBody").value;
+      try { navigator.clipboard.writeText(txt).then(function () { toast("Message copied"); }, function () { $("eBody").select(); toast("Select-all done: press Ctrl+C"); }); } catch (e) { $("eBody").select(); }
+      return;
+    }
+    if (t.id === "eMark") { var to = $("eTo").value.trim(); upd(c.id, { emailedAt: nowISO(), email: to || c.email || "" }).then(function () { toast("Recorded as emailed"); }); return; }
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && S.open) closeSheet();
+    if (ev.key === "Enter" && ev.target.matches && ev.target.matches("tr[data-id]")) openSheet(ev.target.dataset.id);
+  });
+  document.addEventListener("input", function (ev) {
+    if (["eTo", "eCc", "eSubj", "eBody"].indexOf(ev.target.id) >= 0) syncOutlook();
+    if (ev.target.id === "fText") { S.filters.text = ev.target.value; renderSummary(); renderGrid(); }
+  });
+  document.addEventListener("change", function (ev) {
+    var id = ev.target.id;
+    if (id === "fProg") S.filters.prog = ev.target.value;
+    else if (id === "semSel") { switchSem(ev.target.value); return; }
+    else if (id === "sigFile") { if (ev.target.files[0]) saveSignature(ev.target.files[0]); ev.target.value = ""; return; }
+    else if (id === "expTarget") { S.exp.target = ev.target.value; renderExport(); return; }
+    else if (ev.target.dataset && ev.target.dataset.expchk) { S.exp[ev.target.dataset.expchk] = ev.target.checked; renderExport(); return; }
+    else if (id === "fTerm") S.filters.term = ev.target.value;
+    else if (id === "fState") S.filters.state = ev.target.value;
+    else if (id === "fInst") S.filters.inst = ev.target.value;
+    else if (ev.target.dataset && ev.target.dataset.remf) { S.remF[ev.target.dataset.remf] = ev.target.checked; renderReminders(); return; }
+    else if (id === "impFile") { if (ev.target.files[0]) { $("settingsPanel").hidden = true; importSchedule(ev.target.files[0]); ev.target.value = ""; } return; }
+    else if (id === "mTerm") { var c = course(S.open); if (c) upd(c.id, { term: ev.target.value }).then(function () { toast("Term saved"); }); return; }
+    else return;
+    renderAll();
+  });
+  $("scrim").addEventListener("click", closeSheet);
+
+  function createCourse() {
+    var prog = $("nProg").value, cname = $("nCourse").value.trim(), sec = $("nSection").value.trim();
+    if (!cname) { toast("Enter the course folder name"); return; }
+    var rel = prog + "/" + cname + (sec ? "/" + sec : ""), id = rid(rel), ex = course(id);
+    var doc = { program: prog, programShort: CF.programShort(prog), course: cname, section: sec, path: basePath() + "/" + rel, semester: semKey(), manual: true, gone: false, removed: false,
+      instructor: $("nInst").value.trim(), email: $("nEmail").value.trim(), term: $("nTerm").value, enrolled: +$("nStud").value || 0,
+      scan: { items: CF.SECTIONS.map(function (s) { return { k: s.k, s: "miss", note: "Nothing uploaded yet." }; }), issues: [], assessments: [], files: 0, state: "not_started", score: 0 }, review: { status: "pending" } };
+    var p = ex ? S.db.collection("courses").doc(id).update({ removed: false, gone: false, instructor: doc.instructor || ex.instructor, email: doc.email || ex.email, term: doc.term || ex.term, enrolled: doc.enrolled || ex.enrolled }) : S.db.collection("courses").doc(id).set(doc);
+    p.then(function () { toast(ex ? "Course file restored" : "Course file added"); closeSheet(); if (course(id)) openSheet(id); else S.pendingOpen = id; }).catch(function () { toast("Could not add the course file."); });
+  }
+  function fillSettings() {
+    var c = S.config, d = semDue();
+    $("dueNote").textContent = "Due dates for " + semLabel() + " (the semester you are viewing).";
+    $("setYear").value = c.year || "2026 - 2027"; $("setSem").value = c.semester || "Fall";
+    var rem = S.courses.filter(function (c) { return c.removed && (c.semester || "2026 - 2027/Fall") === semKey(); });
+    $("removedList").innerHTML = rem.length ? rem.map(function (c) { return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:4px 0"><span>' + esc(c.course + (c.section ? " · " + c.section : "")) + '</span><button class="btn small" type="button" data-restore="' + esc(c.id) + '">Restore</button></div>'; }).join("") : '<span class="note">None.</span>';
+    $("dueA").value = d.A || ""; $("dueB").value = d.B || ""; $("dueF").value = d.F || ""; $("setLink").value = c.link || ""; $("sigPrev").innerHTML = c.signature ? '<img alt="Saved signature" style="max-height:48px;max-width:220px" src="' + esc(c.signature) + '">' : '<span class="note" style="color:#5B6763">No signature saved</span>'; $("sigRemove").hidden = !c.signature; $("setRevName").value = c.reviewerName || "Mousa Alhatti"; $("setRevEmail").value = c.reviewerEmail || "mousa.alhatti@adu.ac.ae";
+  }
+  // Signature: trim the white space and make the background transparent, then save it with the settings.
+  function saveSignature(file) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var sc = Math.min(1, 900 / Math.max(img.width, img.height)), w = Math.round(img.width * sc), h = Math.round(img.height * sc);
+        var cv = document.createElement("canvas"); cv.width = w; cv.height = h; var g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+        var d = g.getImageData(0, 0, w, h), p = d.data, x0 = w, y0 = h, x1 = -1, y1 = -1;
+        for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) { var i = (y * w + x) * 4, lum = 0.3 * p[i] + 0.59 * p[i + 1] + 0.11 * p[i + 2], a = Math.max(0, Math.min(255, Math.round((235 - lum) * 255 / 180))); p[i] = 24; p[i + 1] = 32; p[i + 2] = 30; p[i + 3] = a; if (a > 60) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+        if (x1 < 0) { toast("No signature found in that image."); return; }
+        g.putImageData(d, 0, 0); x0 = Math.max(0, x0 - 8); y0 = Math.max(0, y0 - 8); x1 = Math.min(w - 1, x1 + 8); y1 = Math.min(h - 1, y1 + 8);
+        var out = document.createElement("canvas"); out.width = x1 - x0 + 1; out.height = y1 - y0 + 1; out.getContext("2d").drawImage(cv, x0, y0, out.width, out.height, 0, 0, out.width, out.height);
+        var url = out.toDataURL("image/png");
+        S.db.collection("config").doc("settings").set(Object.assign({}, S.config, { signature: url })).then(function () { toast("Signature saved"); setTimeout(fillSettings, 300); }).catch(function () { toast("Could not save the signature."); });
+      };
+      img.onerror = function () { toast("That file could not be read as an image."); };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  }
+  function saveSettings() {
+    var dueBy = Object.assign({}, S.config.dueBySem || {}); dueBy[semKey()] = { A: $("dueA").value, B: $("dueB").value, F: $("dueF").value };
+    var next = Object.assign({}, S.config, { year: $("setYear").value.trim() || "2026 - 2027", semester: $("setSem").value, dueBySem: dueBy, link: $("setLink").value.trim(), reviewerName: $("setRevName").value.trim(), reviewerEmail: $("setRevEmail").value.trim() });
+    if (semKey() === FALL26) next.due = dueBy[FALL26];
+    var defChanged = next.year !== S.config.year || next.semester !== S.config.semester;
+    S.db.collection("config").doc("settings").set(next).then(function () { toast("Settings saved"); $("settingsPanel").hidden = true; if (defChanged) switchSem(next.year + "/" + next.semester); }).catch(function () { toast("Could not save settings."); });
+  }
+
+  /* ---------- shared: spreadsheet library (loaded only when needed) ---------- */
+  function loadXLSX() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    return new Promise(function (res, rej) {
+      var s = document.createElement("script");
+      s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+      s.onload = function () { res(window.XLSX); }; s.onerror = function () { rej(new Error("Could not load the spreadsheet library.")); };
+      document.head.appendChild(s);
+    });
+  }
+  function itemSym(c, k) { var sc = scan(c); if (sc.state === "not_started") return "–"; var it = (sc.items || []).filter(function (i) { return i.k === k; })[0]; return it ? { ok: "✓", part: "!", miss: "✕" }[it.s] : "✕"; }
+  function sheetModal(title, eyebrow, bodyHtml) {
+    S.open = "__panel"; $("sheet").hidden = false; $("scrim").hidden = false;
+    $("sheet").innerHTML = '<div class="sheet-head"><div class="row"><div style="display:grid;gap:4px"><span class="eyebrow">' + esc(eyebrow) + '</span><h2 id="dTitle" style="font-size:1.3rem">' + esc(title) + '</h2></div><button class="x" type="button" aria-label="Close">×</button></div></div><div class="sheet-body">' + bodyHtml + "</div>";
+  }
+
+  /* ---------- 8. Report (Excel) ---------- */
+  async function downloadReport() {
+    var dl = S.downloads;
+    if (!dl) { toast("Downloads are not available in this view."); return; }
+    toast("Preparing the report…");
+    var X; try { X = await loadXLSX(); } catch (e) { toast(e.message); return; }
+    var cs = semCourses(), sem = semLabel(), today = new Date().toISOString().slice(0, 10);
+    var order = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
+    var progs = {}; cs.forEach(function (c) { var k = c.programShort; var p = progs[k] = progs[k] || { n: 0, complete: 0, in_progress: 0, not_due: 0, overdue: 0, approved: 0, score: 0, issues: 0 }; p.n++; p[dstate(c)]++; p.score += scan(c).score; if ((c.review || {}).status === "approved") p.approved++; p.issues += openComments(c.id).length; });
+    var sum = [["Folio course file report", ""], ["Department", "Department of Education"], ["Semester", sem], ["Generated", today], ["Last SharePoint check", semLastScan() ? fmtDT(semLastScan().at) : "—"], [],
+      ["Program", "Course files", "Complete", "In progress", "Not due yet", "Overdue", "Approved", "Completion rate", "Average score", "Open comments"]];
+    var tot = { n: 0, complete: 0, in_progress: 0, not_due: 0, overdue: 0, approved: 0, score: 0, issues: 0 };
+    Object.keys(progs).sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); }).forEach(function (k) {
+      var p = progs[k]; Object.keys(tot).forEach(function (f) { tot[f] += p[f]; });
+      sum.push([k, p.n, p.complete, p.in_progress, p.not_due, p.overdue, p.approved, p.n ? Math.round(p.complete / p.n * 100) + "%" : "–", p.n ? Math.round(p.score / p.n) + "%" : "–", p.issues]);
+    });
+    sum.push(["All programs", tot.n, tot.complete, tot.in_progress, tot.not_due, tot.overdue, tot.approved, tot.n ? Math.round(tot.complete / tot.n * 100) + "%" : "–", tot.n ? Math.round(tot.score / tot.n) + "%" : "–", tot.issues]);
+    sum.push([], ["Rules applied", "Seven course-file folders as in the model course file; graded samples per assessment and level: 1 (<30 students), 2 (30–60), 3 (>60); syllabus must state section and campus."]);
+    var det = [["Program", "Course", "Section / folder", "Instructor", "Email", "Term", "Due date", "Students", "Samples per level", "Status", "Score %", "1 Checklist", "2 Syllabus", "3 Materials", "4 Assessment", "5 Attendance", "6 CRC", "7 SET", "Reviewer decision", "Decision date", "Open comments", "Instructor emailed", "Last scanned"]];
+    var iss = [["Program", "Course", "Instructor", "Item", "Detail"]];
+    cs.slice().sort(function (a, b) { return order.indexOf(a.programShort) - order.indexOf(b.programShort) || (a.course + a.section).localeCompare(b.course + b.section); }).forEach(function (c) {
+      var sc = scan(c), rv = (c.review || {});
+      det.push([c.programShort, c.course, c.section || "", c.instructor || "", c.email || "", c.term || "", dueFor(c) || "", c.enrolled || "", need(c), stateLabel(dstate(c)), sc.score, itemSym(c, 1), itemSym(c, 2), itemSym(c, 3), itemSym(c, 4), itemSym(c, 5), itemSym(c, 6), itemSym(c, 7), ({ pending: "Not reviewed", approved: "Approved", revise: "Needs revision" })[rv.status || "pending"], rv.at ? rv.at.slice(0, 10) : "", openComments(c.id).length, c.emailedAt ? c.emailedAt.slice(0, 10) : "", c.scannedAt ? c.scannedAt.slice(0, 10) : ""]);
+      if (sc.state !== "not_started") (sc.items || []).forEach(function (i) { if (i.s !== "ok") iss.push([c.programShort, c.course, c.instructor || "", i.k + ". " + CF.SECTIONS[i.k - 1].short, i.note]); });
+      (sc.issues || []).forEach(function (x) { iss.push([c.programShort, c.course, c.instructor || "", "Automatic check", x]); });
+      openComments(c.id).forEach(function (m) { iss.push([c.programShort, c.course, c.instructor || "", "Reviewer comment" + (m.sec ? " (" + CF.SECTIONS[m.sec - 1].short + ")" : ""), m.text]); });
+    });
+    var wb = X.utils.book_new();
+    function add(name, aoa, widths) { var ws = X.utils.aoa_to_sheet(aoa); ws["!cols"] = widths.map(function (w) { return { wch: w }; }); X.utils.book_append_sheet(wb, ws, name); }
+    add("Summary", sum, [34, 14, 10, 12, 12, 10, 10, 15, 14, 14]);
+    add("Course files", det, [26, 34, 28, 22, 28, 13, 11, 9, 10, 12, 8, 9, 9, 9, 11, 10, 7, 7, 15, 12, 10, 12, 12]);
+    add("Issues", iss.length > 1 ? iss : iss.concat([["", "", "", "", "No open issues"]]), [26, 34, 22, 26, 90]);
+    var buf = X.write(wb, { type: "array", bookType: "xlsx" });
+    try { await dl.save({ filename: "Folio report - Education - " + sem.replace(/[^\w\s-]/g, "-") + " - " + today + ".xlsx", data: new Blob([buf]) }); toast("Report saved"); }
+    catch (e) { if (e && e.code !== "declined") toast("Could not save the report (" + (e.code || "error") + ")."); }
+  }
+
+  /* ---------- 10. Export a report (PDF or Excel) ---------- */
+  var XC = { accent: "#8A1C3F", accentSoft: "#F4E3E9", ink: "#18201E", muted: "#5B6763", line: "#D7DDDA", sunk: "#F3F5F4",
+    ok: "#2F7D50", okSoft: "#DDF0E4", part: "#B7790A", partSoft: "#FBEFD3", miss: "#BF3B2A", missSoft: "#F9E0DB", none: "#9AA4A0", noneSoft: "#ECEFEE", over: "#BF3B2A" };
+  var PROG_ORDER = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
+  var STATE_COL = { complete: XC.ok, in_progress: XC.part, not_due: XC.none, overdue: XC.miss, not_started: XC.none };
+  var ITEM_WORD = { ok: "Meets", part: "Partly", miss: "Missing", none: "Not uploaded", acc: "Accepted" };
+  S.exp = { scope: "course", target: "", fmt: "pdf", detail: true, comments: true, resolved: false, assess: true };
+
+  function fileSort(a, b) { return PROG_ORDER.indexOf(a.programShort) - PROG_ORDER.indexOf(b.programShort) || (a.course + a.section).localeCompare(b.course + b.section); }
+  function secShown(c) { return c.section && !/,/.test(c.section) && c.section !== c.instructor ? c.section : ""; }
+  function fileName(c) { return c.course + (secShown(c) ? " · " + secShown(c) : ""); }
+  function termShort(t) { return t === "Full semester" ? "Full" : t || "—"; }
+  function courseLabel(c) { return fileName(c) + (c.instructor ? " — " + c.instructor : ""); }
+  function expTargets(scope) {
+    var cs = semCourses().slice().sort(fileSort);
+    if (scope === "course") return cs.map(function (c) { return { v: c.id, l: courseLabel(c) }; });
+    if (scope === "instructor") return Array.from(new Set(cs.map(function (c) { return c.instructor; }).filter(Boolean))).sort().map(function (n) { return { v: n, l: n + " (" + cs.filter(function (c) { return c.instructor === n; }).length + ")" }; });
+    if (scope === "program") return Array.from(new Set(cs.map(function (c) { return c.programShort; }))).sort(function (a, b) { return PROG_ORDER.indexOf(a) - PROG_ORDER.indexOf(b); }).map(function (p) { return { v: p, l: p }; });
+    return [{ v: "all", l: "All programs, " + semLabel() }];
+  }
+  function expFiles() {
+    var e = S.exp, cs = semCourses().slice().sort(fileSort);
+    if (e.scope === "course") return cs.filter(function (c) { return c.id === e.target; });
+    if (e.scope === "instructor") return cs.filter(function (c) { return c.instructor === e.target; });
+    if (e.scope === "program") return cs.filter(function (c) { return c.programShort === e.target; });
+    return cs;
+  }
+  function openExport(courseId) {
+    if (courseId) { S.exp.scope = "course"; S.exp.target = courseId; }
+    renderExport();
+  }
+  function renderExport() {
+    var e = S.exp, tg = expTargets(e.scope);
+    if (!tg.some(function (t) { return t.v === e.target; })) e.target = tg[0] ? tg[0].v : "";
+    var n = expFiles().length;
+    var seg = function (name, val, label) { return '<button type="button" class="btn small expseg" data-expset="' + name + '" data-val="' + val + '" aria-pressed="' + (e[name] === val) + '">' + label + "</button>"; };
+    var chk = function (name, label) { return '<label class="note" style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" data-expchk="' + name + '"' + (e[name] ? " checked" : "") + "> " + label + "</label>"; };
+    var body = '<div style="display:grid;gap:16px">' +
+      '<div style="display:grid;gap:6px"><b>Report for</b><div class="decide">' + seg("scope", "course", "One course file") + seg("scope", "instructor", "An instructor") + seg("scope", "program", "A program") + seg("scope", "all", "Whole department") + "</div></div>" +
+      (e.scope !== "all" ? '<label style="display:grid;gap:6px"><b>' + ({ course: "Course file", instructor: "Instructor", program: "Program" }[e.scope]) + '</b><select id="expTarget" class="field">' + tg.map(function (t) { return '<option value="' + esc(t.v) + '"' + (t.v === e.target ? " selected" : "") + ">" + esc(t.l) + "</option>"; }).join("") + "</select></label>" : "") +
+      '<div style="display:grid;gap:6px"><b>Format</b><div class="decide">' + seg("fmt", "pdf", "PDF (formal report)") + seg("fmt", "xlsx", "Excel (workbook)") + "</div></div>" +
+      '<div style="display:grid;gap:8px"><b>Include</b>' +
+      (e.scope !== "course" ? chk("detail", "A detailed page for each course file (checklist and findings)") : "") +
+      chk("assess", "Assessment evidence (sample counts only, no student names)") + chk("comments", "Review comments") + (e.comments ? chk("resolved", "Resolved comments as well") : "") + "</div>" +
+      '<div class="checks" style="padding:12px 14px;font-size:.86rem">' + (n ? "<span><b>" + n + "</b> course file" + (n === 1 ? "" : "s") + " from " + esc(semLabel()) + ". " + (e.fmt === "pdf" ? (e.scope === "course" ? "The PDF has the course file details, a chart, the checklist and findings, and a sign-off block." : "The PDF has a summary with charts, an overview table" + (e.detail ? ", a page per course file" : "") + " and a sign-off block.") : "The workbook has a Summary sheet with charts, then Course files, Checklist" + (e.assess ? ", Assessments" : "") + (e.comments ? ", Comments" : "") + " and Findings sheets.") + "</span>" : "No course files match.") + "</div>" +
+      '<div><button class="btn primary" type="button" id="expGo"' + (n ? "" : " disabled") + ">Create " + (e.fmt === "pdf" ? "PDF" : "Excel") + " report</button></div></div>";
+    sheetModal("Export a report", semLabel(), body);
+    S._panelIs = "exp";
+    var sel = $("expTarget"); if (sel) sel.style.cssText = "border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;width:100%";
+  }
+
+  /* --- report model --- */
+  function itemState(sc, k) {
+    if (sc.state === "not_started") return { s: "none", note: "Nothing uploaded yet." };
+    var it = (sc.items || []).filter(function (i) { return i.k === k; })[0] || { s: "miss", note: "" };
+    return { s: it.accepted && it.acceptedFrom !== "ok" ? "acc" : it.s, note: it.note || "" };
+  }
+  function buildModel() {
+    var e = S.exp, files = expFiles(), today = new Date();
+    var me = S.config.reviewerName || "Mousa Alhatti", meEmail = S.config.reviewerEmail || "mousa.alhatti@adu.ac.ae";
+    var m = { scope: e.scope, files: files, opts: e, sem: semLabel(), generated: fmtDate(today.toISOString().slice(0, 10)) + ", " + today.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }), reviewer: me, reviewerEmail: meEmail,
+      lastScan: semLastScan() ? fmtDT(semLastScan().at) : "Not recorded" };
+    var cnt = { complete: 0, in_progress: 0, not_due: 0, overdue: 0 }, approved = 0, score = 0, open = 0;
+    files.forEach(function (c) { cnt[dstate(c)] = (cnt[dstate(c)] || 0) + 1; if ((c.review || {}).status === "approved") approved++; score += scan(c).score; open += openComments(c.id).length; });
+    m.cnt = cnt; m.approved = approved; m.avg = files.length ? Math.round(score / files.length) : 0; m.open = open;
+    m.items = CF.SECTIONS.map(function (s) { var r = { label: s.k + ". " + s.short, ok: 0, part: 0, miss: 0, none: 0 }; files.forEach(function (c) { var st = itemState(scan(c), s.k).s; r[st === "acc" ? "ok" : st]++; }); return r; });
+    var c0 = files[0];
+    if (e.scope === "course" && c0) {
+      var sc0 = scan(c0), rv = (c0.review || {}).status || "pending";
+      m.kicker = "Course file review report"; m.title = fileName(c0);
+      m.subtitle = (c0.instructor || "Instructor not set") + " · " + c0.programShort;
+      m.meta = [["Program", c0.programShort], ["Course", c0.course], ["Section / folder", c0.section || "—"], ["Instructor", c0.instructor || "—"], ["Email", c0.email || "—"], ["Term", c0.term || "—"], ["Due date", dueFor(c0) ? fmtDate(dueFor(c0)) : "—"], ["Class size", c0.enrolled ? c0.enrolled + " students" : "Not recorded"], ["Semester", m.sem], ["Reviewer decision", { pending: "Not reviewed yet", approved: "Approved", revise: "Needs revision" }[rv] + ((c0.review || {}).at ? " (" + fmtDate(c0.review.at.slice(0, 10)) + ")" : "")]];
+      var met = (sc0.items || []).filter(function (i) { return i.s === "ok"; }).length;
+      m.kpis = [["Completion", sc0.score + "%", STATE_COL[dstate(c0)]], ["Items met", (sc0.state === "not_started" ? 0 : met) + " of 7", XC.ink], ["Status", stateLabel(dstate(c0)), STATE_COL[dstate(c0)]], ["Open comments", String(openComments(c0.id).length), openComments(c0.id).length ? XC.miss : XC.ink]];
+    } else {
+      var insts = Array.from(new Set(files.map(function (c) { return c.instructor; }).filter(Boolean)));
+      var progs = Array.from(new Set(files.map(function (c) { return c.programShort; })));
+      m.kicker = e.scope === "instructor" ? "Instructor course file report" : e.scope === "program" ? "Program course file report" : "Department course file report";
+      m.title = e.scope === "instructor" ? e.target : e.scope === "program" ? e.target : "Department of Education";
+      m.subtitle = files.length + " course file" + (files.length === 1 ? "" : "s") + " · " + m.sem;
+      m.meta = (e.scope === "instructor" ? [["Instructor", e.target], ["Email", (files.filter(function (c) { return c.email; })[0] || {}).email || "—"], ["Programs", progs.join(", ")]] : e.scope === "program" ? [["Program", e.target], ["Instructors", String(insts.length)]] : [["Department", "Department of Education"], ["Programs", String(progs.length)], ["Instructors", String(insts.length)]])
+        .concat([["Course files", String(files.length)], ["Semester", m.sem]]);
+      m.kpis = [["Course files", String(files.length), XC.ink], ["Complete", String(cnt.complete), XC.ok], ["In progress", String(cnt.in_progress), XC.part], ["Not due yet", String(cnt.not_due), XC.muted], ["Overdue", String(cnt.overdue), cnt.overdue ? XC.miss : XC.ink], ["Approved", String(approved), XC.accent], ["Avg. completion", m.avg + "%", XC.ink]];
+      m.progs = PROG_ORDER.filter(function (p) { return progs.indexOf(p) >= 0; }).map(function (p) { var r = { label: p, complete: 0, in_progress: 0, not_due: 0, overdue: 0 }; files.forEach(function (c) { if (c.programShort === p) r[dstate(c)]++; }); return r; });
+    }
+    m.meta.push(["Reviewer", me + (meEmail ? " (" + meEmail + ")" : "")], ["Last SharePoint check", m.lastScan], ["Generated", m.generated]);
+    m.comments = function (c) {
+      var all = S.comments.filter(function (x) { return x.courseId === c.id; }).sort(function (a, b) { return (a.at || "").localeCompare(b.at || ""); });
+      var roots = all.filter(function (x) { return !x.parent && (e.resolved || x.kind !== "issue" || x.status !== "resolved"); }), out = [];
+      roots.forEach(function (r) { out.push(r); all.filter(function (x) { return x.parent === r.id; }).forEach(function (x) { out.push(x); }); });
+      return out;
+    };
+    return m;
+  }
+
+  /* --- charts (drawn on a canvas, saved as PNG) --- */
+  function canvasPNG(w, h, draw) {
+    var k = 3, cv = document.createElement("canvas"); cv.width = w * k; cv.height = h * k;
+    var g = cv.getContext("2d"); g.scale(k, k); g.fillStyle = "#FFFFFF"; g.fillRect(0, 0, w, h); g.textBaseline = "middle"; draw(g);
+    return new Promise(function (res) { cv.toBlob(function (b) { b.arrayBuffer().then(function (ab) { res({ bytes: new Uint8Array(ab), w: w, h: h }); }); }, "image/png"); });
+  }
+  function fnt(g, size, weight, color) { g.font = (weight || 400) + " " + size + "px Arial, Helvetica, sans-serif"; g.fillStyle = color || XC.ink; }
+  function chartTitle(g, t, sub) { fnt(g, 14, 700); g.fillText(t, 0, 12); if (sub) { fnt(g, 11, 400, XC.muted); g.fillText(sub, 0, 30); } }
+  function chartDonut(m) {
+    var segs = [["Complete", m.cnt.complete, XC.ok], ["In progress", m.cnt.in_progress, XC.part], ["Not due yet", m.cnt.not_due, XC.none], ["Overdue", m.cnt.overdue, XC.miss]], tot = m.files.length || 1;
+    return canvasPNG(520, 200, function (g) {
+      chartTitle(g, "Status of course files", "Share of course files by status");
+      var cx = 90, cy = 120, R = 62, r = 40, a = -Math.PI / 2;
+      segs.forEach(function (s) { if (!s[1]) return; var b = a + (s[1] / tot) * Math.PI * 2; g.beginPath(); g.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); g.arc(cx, cy, R, a, b); g.arc(cx, cy, r, b, a, true); g.closePath(); g.fillStyle = s[2]; g.fill(); g.strokeStyle = "#FFF"; g.lineWidth = 2; g.stroke(); a = b; });
+      g.textAlign = "center"; fnt(g, 20, 700); g.fillText(Math.round(m.cnt.complete / tot * 100) + "%", cx, cy - 4); fnt(g, 10, 400, XC.muted); g.fillText("complete", cx, cy + 14); g.textAlign = "left";
+      segs.forEach(function (s, i) { var y = 72 + i * 30; g.fillStyle = s[2]; g.fillRect(200, y - 7, 14, 14); fnt(g, 13, 600); g.fillText(s[0], 224, y); fnt(g, 13, 400, XC.muted); g.textAlign = "right"; g.fillText(s[1] + "  (" + Math.round(s[1] / tot * 100) + "%)", 500, y); g.textAlign = "left"; });
+    });
+  }
+  function chartItems(m) {
+    var rows = m.items, tot = m.files.length || 1, H = 52 + rows.length * 26 + 24;
+    return canvasPNG(520, H, function (g) {
+      chartTitle(g, "Checklist items across the course files", "How many course files meet each of the seven items");
+      var x0 = 120, W = 330;
+      rows.forEach(function (r, i) {
+        var y = 56 + i * 26; fnt(g, 11, 600); g.fillText(r.label, 0, y + 9);
+        var x = x0; [["ok", XC.ok], ["part", XC.part], ["miss", XC.miss], ["none", XC.noneSoft]].forEach(function (p) { var w = r[p[0]] / tot * W; if (w > 0) { g.fillStyle = p[1]; g.fillRect(x, y, w, 18); x += w; } });
+        fnt(g, 11, 700, XC.ink); g.fillText(r.ok + " of " + tot, x0 + W + 10, y + 9);
+      });
+      var ly = H - 10, lx = 0; [["Meets", XC.ok], ["Partly", XC.part], ["Missing", XC.miss], ["Not uploaded", XC.noneSoft]].forEach(function (p) { g.fillStyle = p[1]; g.fillRect(lx, ly - 5, 10, 10); fnt(g, 10, 400, XC.muted); g.fillText(p[0], lx + 14, ly); lx += g.measureText(p[0]).width + 34; });
+    });
+  }
+  function chartScores(m) {
+    var fs = m.files.slice().sort(function (a, b) { return scan(b).score - scan(a).score; }), H = 52 + fs.length * 20 + 6;
+    return canvasPNG(520, H, function (g) {
+      chartTitle(g, "Completion by course file", "Percentage of the model course file in place");
+      var x0 = 200, W = 262;
+      fs.forEach(function (c, i) {
+        var y = 52 + i * 20, sc = scan(c).score; fnt(g, 10.5, 600); var code = c.course.split(/\s+-\s+/)[0], lab = code + (secShown(c) ? " " + secShown(c) : "") + (m.scope !== "instructor" && c.instructor ? " · " + c.instructor.split(" ").slice(-1)[0] : "");
+        if (g.measureText(lab).width > x0 - 10) { while (g.measureText(lab + "…").width > x0 - 10 && lab.length > 4) lab = lab.slice(0, -1); lab += "…"; } g.fillText(lab, 0, y + 7);
+        g.fillStyle = XC.sunk; g.fillRect(x0, y, W, 14); g.fillStyle = STATE_COL[dstate(c)]; g.fillRect(x0, y, W * sc / 100, 14);
+        fnt(g, 10.5, 700); g.fillText(sc + "%", x0 + W + 8, y + 7);
+      });
+    });
+  }
+  function chartPrograms(m) {
+    var rows = m.progs, mx = Math.max.apply(null, rows.map(function (r) { return r.complete + r.in_progress + r.not_due + r.overdue; }).concat([1])), H = 52 + rows.length * 34 + 24;
+    return canvasPNG(520, H, function (g) {
+      chartTitle(g, "Course files by program", "Count of course files in each status");
+      var x0 = 225, W = 250;
+      rows.forEach(function (r, i) {
+        var y = 54 + i * 34; fnt(g, 11, 600); g.fillText(r.label, 0, y + 10);
+        var x = x0; [["complete", XC.ok], ["in_progress", XC.part], ["not_due", XC.none], ["overdue", XC.miss]].forEach(function (p) { var w = r[p[0]] / mx * W; if (w > 0) { g.fillStyle = p[1]; g.fillRect(x, y, w, 20); if (w > 16) { fnt(g, 10, 700, "#FFFFFF"); g.textAlign = "center"; g.fillText(String(r[p[0]]), x + w / 2, y + 10); g.textAlign = "left"; } x += w; } });
+        fnt(g, 11, 700); g.fillText(String(r.complete + r.in_progress + r.not_due + r.overdue), x + 8, y + 10);
+      });
+      var ly = H - 10, lx = 0; [["Complete", XC.ok], ["In progress", XC.part], ["Not due yet", XC.none], ["Overdue", XC.miss]].forEach(function (p) { g.fillStyle = p[1]; g.fillRect(lx, ly - 5, 10, 10); fnt(g, 10, 400, XC.muted); g.fillText(p[0], lx + 14, ly); lx += g.measureText(p[0]).width + 34; });
+    });
+  }
+  function chartCourse(m) {
+    var c = m.files[0], sc = scan(c);
+    return canvasPNG(520, 170, function (g) {
+      chartTitle(g, "Course file at a glance", "Completion and the seven checklist items");
+      var cx = 70, cy = 105, R = 50; g.lineWidth = 12; g.strokeStyle = XC.sunk; g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = STATE_COL[dstate(c)]; g.lineCap = "round"; g.beginPath(); g.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * sc.score / 100); if (sc.score) g.stroke(); g.lineCap = "butt";
+      g.textAlign = "center"; fnt(g, 20, 700); g.fillText(sc.score + "%", cx, cy - 2); fnt(g, 10, 400, XC.muted); g.fillText(stateLabel(dstate(c)).toLowerCase(), cx, cy + 16); g.textAlign = "left";
+      CF.SECTIONS.forEach(function (s, i) {
+        var st = itemState(sc, s.k).s, col = { ok: XC.ok, acc: XC.ok, part: XC.part, miss: XC.miss, none: XC.noneSoft }[st], x = 160 + (i % 4) * 90, y = 62 + Math.floor(i / 4) * 52;
+        g.fillStyle = col; g.fillRect(x, y, 80, 6); fnt(g, 11, 700); g.fillText(s.k + ". " + s.short, x, y + 20); fnt(g, 10, 400, st === "none" ? XC.muted : col === XC.noneSoft ? XC.muted : col); g.fillText(ITEM_WORD[st], x, y + 35);
+      });
+    });
+  }
+  async function buildCharts(m) {
+    var ch = [];
+    if (m.scope === "course") ch.push(await chartCourse(m));
+    else { ch.push(await chartDonut(m)); if (m.progs && m.progs.length > 1) ch.push(await chartPrograms(m)); ch.push(await chartItems(m)); ch.push(await chartScores(m)); }
+    return ch;
+  }
+  function logoPNG(px) {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="' + px + '" height="' + px + '"><path d="M14 6h22l10 10v24H14z" fill="#FFFFFF" stroke="#8A1C3F" stroke-width="3"/><path d="M9 11h22l10 10v24H9z" fill="#FFFFFF" stroke="#8A1C3F" stroke-width="3"/><path d="M4 18h18v12h22c3 0 5 2 5 5v20c0 3-2 5-5 5H9c-3 0-5-2-5-5z" fill="#8A1C3F"/><path d="M14 30h28v22H14z" fill="#FFFFFF"/><path d="M19 41l6 6 12-12" fill="none" stroke="#2F7D50" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    return new Promise(function (res, rej) {
+      var img = new Image(); img.onload = function () { var cv = document.createElement("canvas"); cv.width = px; cv.height = px; var g = cv.getContext("2d"); g.drawImage(img, 0, 0, px, px); cv.toBlob(function (b) { b.arrayBuffer().then(function (ab) { res(new Uint8Array(ab)); }); }, "image/png"); };
+      img.onerror = rej; img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    });
+  }
+
+  /* --- PDF --- */
+  function loadScript(src, test) {
+    if (test()) return Promise.resolve(test());
+    return new Promise(function (res, rej) { var s = document.createElement("script"); s.src = src; s.onload = function () { test() ? res(test()) : rej(new Error("Library did not load.")); }; s.onerror = function () { rej(new Error("Could not load the PDF library. Check your connection and try again.")); }; document.head.appendChild(s); });
+  }
+  var CP1252 = "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
+  function safe(s) {
+    s = String(s == null ? "" : s).replace(/✓|✔/g, "Yes").replace(/✕|✗|×/g, "No").replace(/→/g, "->").replace(/≥/g, ">=").replace(/≤/g, "<=").replace(/[   ]/g, " ").replace(/[\r\t]/g, " ");
+    var o = ""; for (var i = 0; i < s.length; i++) { var ch = s[i], cc = s.charCodeAt(i); o += (cc < 256 && cc !== 127 && (cc >= 32 || cc === 10)) || CP1252.indexOf(ch) >= 0 ? ch : "?"; }
+    return o;
+  }
+  function hexRGB(P, h) { var n = parseInt(h.slice(1), 16); return P.rgb((n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255); }
+
+  async function buildPDF(m, charts) {
+    var P = await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js", function () { return window.PDFLib; });
+    var doc = await P.PDFDocument.create();
+    doc.setTitle(safe(m.kicker + " — " + m.title)); doc.setAuthor(safe(m.reviewer || "Folio")); doc.setSubject(safe("Department of Education · " + m.sem)); doc.setCreator("Folio"); doc.setProducer("Folio");
+    var F = { r: await doc.embedFont(P.StandardFonts.Helvetica), b: await doc.embedFont(P.StandardFonts.HelveticaBold), i: await doc.embedFont(P.StandardFonts.HelveticaOblique) };
+    var logo = await doc.embedPng(await logoPNG(192));
+    var sig = null; try { var sd = S.config.signature; if (sd && /^data:image\/png;base64,/.test(sd)) { var bin = atob(sd.split(",")[1]), u8 = new Uint8Array(bin.length); for (var bi = 0; bi < bin.length; bi++) u8[bi] = bin.charCodeAt(bi); sig = await doc.embedPng(u8); } } catch (se) { sig = null; }
+    var imgs = []; for (var q = 0; q < charts.length; q++) imgs.push({ img: await doc.embedPng(charts[q].bytes), w: charts[q].w, h: charts[q].h });
+    var W = 595.28, H = 841.89, M = 46, CW = W - 2 * M, TOP = H - 74, BOT = 58;
+    var C = {}; Object.keys(XC).forEach(function (k) { C[k] = hexRGB(P, XC[k]); }); C.white = P.rgb(1, 1, 1);
+    var pg, y;
+    function txt(s, x, yy, size, font, color, opt) { pg.drawText(safe(s), Object.assign({ x: x, y: yy, size: size, font: font || F.r, color: color || C.ink }, opt || {})); }
+    function tw(s, font, size) { return (font || F.r).widthOfTextAtSize(safe(s), size); }
+    function wrap(s, font, size, width) {
+      var out = []; safe(s).split("\n").forEach(function (para) {
+        var words = para.split(/ +/), line = "";
+        words.forEach(function (w) {
+          while (tw(w, font, size) > width && w.length > 1) { var cut = w.length; while (cut > 1 && tw(w.slice(0, cut), font, size) > width) cut--; if (line) { out.push(line); line = ""; } out.push(w.slice(0, cut)); w = w.slice(cut); }
+          var t = line ? line + " " + w : w; if (tw(t, font, size) > width && line) { out.push(line); line = w; } else line = t;
+        });
+        out.push(line);
+      });
+      return out;
+    }
+    function newPage() {
+      pg = doc.addPage([W, H]);
+      pg.drawImage(logo, { x: M, y: H - 52, width: 22, height: 22 });
+      txt("Folio", M + 29, H - 39, 12, F.b, C.accent); txt("Course file review", M + 29 + tw("Folio", F.b, 12) + 6, H - 39, 9, F.r, C.muted);
+      var rt = "Department of Education  ·  " + m.sem; txt(rt, W - M - tw(rt, F.r, 8.5), H - 33, 8.5, F.r, C.muted);
+      var rt2 = "College of Arts, Education and Social Sciences"; txt(rt2, W - M - tw(rt2, F.r, 8.5), H - 45, 8.5, F.r, C.muted);
+      pg.drawRectangle({ x: M, y: H - 60, width: CW, height: 1.2, color: C.accent });
+      y = TOP;
+    }
+    function ensure(h) { if (y - h < BOT) newPage(); }
+    function gap(h) { y -= h; }
+    function heading(s, sub) {
+      ensure(40 + (sub ? 12 : 0)); gap(8);
+      pg.drawRectangle({ x: M, y: y - 13, width: 3, height: 15, color: C.accent });
+      txt(s, M + 10, y - 10, 12.5, F.b, C.ink); gap(18);
+      if (sub) { wrap(sub, F.r, 8.5, CW).forEach(function (l) { txt(l, M, y - 8, 8.5, F.r, C.muted); gap(11); }); }
+      gap(6);
+    }
+    function para(s, size, font, color, indent) {
+      size = size || 9; var ls = wrap(s, font || F.r, size, CW - (indent || 0));
+      ls.forEach(function (l) { ensure(size + 4); txt(l, M + (indent || 0), y - size, size, font, color); gap(size + 3.5); });
+    }
+    function pill(word, s, x, yy, w) {
+      var col = { ok: C.ok, acc: C.ok, part: C.part, miss: C.miss, none: C.muted, complete: C.ok, in_progress: C.part, not_due: C.muted, overdue: C.miss, approved: C.ok, revise: C.miss, pending: C.muted }[s] || C.muted;
+      var bg = { ok: C.okSoft, acc: C.okSoft, part: C.partSoft, miss: C.missSoft, none: C.noneSoft, complete: C.okSoft, in_progress: C.partSoft, not_due: C.noneSoft, overdue: C.missSoft, approved: C.okSoft, revise: C.missSoft, pending: C.noneSoft }[s] || C.noneSoft;
+      var tws = tw(word, F.b, 7.5), pw = Math.min(w, tws + 10);
+      pg.drawRectangle({ x: x, y: yy - 3, width: pw, height: 11, color: bg }); txt(word, x + 5, yy, 7.5, F.b, col);
+    }
+    // table: cols [{h, w, align}], rows: arrays of cells; a cell is text or {t, pill:s} or {dots:[s...]} or {t, color, bold}
+    function table(cols, rows, opt) {
+      opt = opt || {}; var fs = opt.size || 8.3, lh = fs + 2.6, pad = 4;
+      function head() {
+        var hh = 0; var hl = cols.map(function (c) { var l = wrap(c.h, F.b, 7.6, c.w - 2 * pad); hh = Math.max(hh, l.length); return l; });
+        var rh = hh * 9.5 + 8; ensure(rh + lh + 8);
+        pg.drawRectangle({ x: M, y: y - rh, width: CW, height: rh, color: C.accent });
+        var x = M; cols.forEach(function (c, i) { hl[i].forEach(function (l, j) { var lx = c.align === "center" ? x + (c.w - tw(l, F.b, 7.6)) / 2 : x + pad; txt(l, lx, y - 11 - j * 9.5, 7.6, F.b, C.white); }); x += c.w; });
+        gap(rh);
+      }
+      head();
+      rows.forEach(function (r, ri) {
+        var lines = r.map(function (cell, i) { if (cell && typeof cell === "object" && (cell.pill || cell.dots)) return [""]; var ob = cell && typeof cell === "object", t = ob ? cell.t : cell; return wrap(t == null ? "" : String(t), ob && cell.bold ? F.b : F.r, fs, cols[i].w - 2 * pad); });
+        var n = Math.max.apply(null, lines.map(function (l) { return l.length; })), rh = n * lh + 7;
+        if (y - rh < BOT) { newPage(); head(); }
+        if (ri % 2) pg.drawRectangle({ x: M, y: y - rh, width: CW, height: rh, color: C.sunk });
+        var x = M;
+        r.forEach(function (cell, i) {
+          var c = cols[i];
+          if (cell && cell.pill) pill(cell.t, cell.pill, x + pad, y - 4 - fs, c.w - 2 * pad);
+          else if (cell && cell.dots) { var dx = x + (c.w - (cell.dots.length * 11 - 3)) / 2; cell.dots.forEach(function (s) { var col = { ok: C.ok, acc: C.ok, part: C.part, miss: C.miss, none: C.line }[s]; pg.drawRectangle({ x: dx, y: y - 5 - fs, width: 8, height: 8, color: col }); dx += 11; }); }
+          else lines[i].forEach(function (l, j) { var ob = cell && typeof cell === "object", f = ob && cell.bold ? F.b : F.r, col = ob && cell.color ? hexRGB(P, cell.color) : C.ink; var lx = c.align === "center" ? x + (c.w - tw(l, f, fs)) / 2 : c.align === "right" ? x + c.w - pad - tw(l, f, fs) : x + pad; txt(l, lx, y - 3.5 - fs - j * lh, fs, f, col); });
+          x += c.w;
+        });
+        pg.drawRectangle({ x: M, y: y - rh, width: CW, height: 0.5, color: C.line });
+        gap(rh);
+      });
+      gap(opt.after == null ? 10 : opt.after);
+    }
+    function chartImg(ci) { var w = Math.min(CW, ci.w * 0.86), h = ci.h * w / ci.w; ensure(h + 8); pg.drawImage(ci.img, { x: M, y: y - h, width: w, height: h }); gap(h + 12); }
+
+    // ---- cover / summary ----
+    newPage();
+    txt(m.kicker.toUpperCase(), M, y - 9, 8.5, F.b, C.accent); gap(16);
+    wrap(m.title, F.b, 21, CW).forEach(function (l) { txt(l, M, y - 20, 21, F.b, C.ink); gap(25); });
+    txt(m.subtitle, M, y - 10, 10.5, F.r, C.muted); gap(24);
+    // meta grid (two columns)
+    var half = (CW - 16) / 2, rowsM = Math.ceil(m.meta.length / 2);
+    for (var i = 0; i < rowsM; i++) {
+      var pair = [m.meta[i], m.meta[i + rowsM]], hmax = 0;
+      pair.forEach(function (kv, j) { if (!kv) return; var ls = wrap(kv[1], F.r, 9, half - 98); hmax = Math.max(hmax, ls.length); });
+      var rh = hmax * 11.5 + 7;
+      pair.forEach(function (kv, j) { if (!kv) return; var x = M + j * (half + 16); txt(kv[0], x, y - 11, 8, F.b, C.muted); wrap(kv[1], F.r, 9, half - 98).forEach(function (l, k) { txt(l, x + 96, y - 11 - k * 11.5, 9, F.r, C.ink); }); pg.drawRectangle({ x: x, y: y - rh, width: half, height: 0.5, color: C.line }); });
+      gap(rh);
+    }
+    gap(14);
+    // KPI tiles
+    var kn = m.kpis.length, kw = (CW - (kn - 1) * 6) / kn;
+    m.kpis.forEach(function (k, j) {
+      var x = M + j * (kw + 6); pg.drawRectangle({ x: x, y: y - 50, width: kw, height: 50, color: C.sunk });
+      pg.drawRectangle({ x: x, y: y - 50, width: 2.5, height: 50, color: hexRGB(P, k[2] === XC.ink ? XC.line : k[2]) });
+      var vs = String(k[1]), sz = 17; while (tw(vs, F.b, sz) > kw - 14 && sz > 9) sz -= 1;
+      txt(vs, x + 9, y - 24, sz, F.b, hexRGB(P, k[2])); wrap(k[0], F.r, 7.8, kw - 14).forEach(function (l, li) { txt(l, x + 9, y - 37 - li * 9, 7.8, F.r, C.muted); });
+    });
+    gap(66);
+    if (imgs.length) { heading(m.scope === "course" ? "Summary" : "Analysis"); imgs.forEach(chartImg); }
+
+    // overview table
+    if (m.scope !== "course") {
+      ensure(150);
+      heading("Course files overview", "Columns 1–7 follow the model course file: 1 Checklist, 2 Syllabus, 3 Materials, 4 Assessment, 5 Attendance, 6 CRC, 7 SET. Green meets the model, amber is partly there, red is missing, grey is not uploaded yet.");
+      var showInst = m.scope !== "instructor";
+      var cols = [{ h: "Course file", w: showInst ? 100 : 140 }].concat(showInst ? [{ h: "Instructor", w: 80 }] : []).concat([{ h: "Term", w: 40 }, { h: "Due", w: 58 }, { h: "Status", w: 60 }, { h: "Done", w: 30, align: "right" }, { h: "Items 1–7", w: 80, align: "center" }, { h: "Review", w: 40 }]);
+      var tot = cols.reduce(function (a, c) { return a + c.w; }, 0); cols[cols.length - 1].w += CW - tot;
+      table(cols, m.files.map(function (c) {
+        var sc = scan(c), st = dstate(c), rv = (c.review || {}).status || "pending";
+        return [{ t: fileName(c), bold: true }].concat(showInst ? [c.instructor || "—"] : []).concat([termShort(c.term), dueFor(c) ? fmtDate(dueFor(c)) : "—", { t: stateLabel(st), pill: st }, { t: sc.score + "%", bold: true }, { dots: CF.SECTIONS.map(function (s) { return itemState(sc, s.k).s; }) }, { approved: "Approved", revise: "Revise", pending: "—" }[rv]]);
+      }));
+    }
+
+    // per course file detail
+    var detail = m.scope === "course" || m.opts.detail;
+    if (detail) m.files.forEach(function (c, fi) {
+      var sc = scan(c), st = dstate(c), nd = need(c);
+      if (m.scope !== "course") { newPage(); txt("COURSE FILE " + (fi + 1) + " OF " + m.files.length, M, y - 9, 8, F.b, C.accent); gap(14); wrap(fileName(c), F.b, 16, CW).forEach(function (l) { txt(l, M, y - 15, 16, F.b, C.ink); gap(20); }); para([c.instructor || "Instructor not set", c.programShort, c.term || "Term not set", dueFor(c) ? "Due " + fmtDate(dueFor(c)) : "", stateLabel(st) + " · " + sc.score + "%", { pending: "Not reviewed yet", approved: "Approved by the reviewer", revise: "Needs revision" }[(c.review || {}).status || "pending"]].filter(Boolean).join("   ·   "), 8.8, F.r, C.muted); gap(4); }
+      heading("Checklist against the model course file");
+      table([{ h: "#", w: 18, align: "center" }, { h: "Item", w: 128 }, { h: "Result", w: 66 }, { h: "Finding", w: CW - 212 }], CF.SECTIONS.map(function (s) {
+        var it = itemState(sc, s.k); return [String(s.k), { t: s.label, bold: true }, { t: ITEM_WORD[it.s], pill: it.s }, it.s === "none" && !isOverdue(c) ? "Nothing uploaded yet. Not due until " + (dueFor(c) ? fmtDate(dueFor(c)) : "the end of the term") + "." : it.note];
+      }));
+      heading("Department rules");
+      para("Graded samples: " + nd + " High, " + nd + " Medium and " + nd + " Low per assessment " + (c.enrolled ? "(class of " + c.enrolled + " students)." : "(class size not recorded, minimum of 1 applied)."), 9);
+      var sy = sc.syllabus;
+      para("Syllabus: must state the section and campus. " + (sy ? (sy.read ? (sy.file || "Current syllabus") + " — campus " + (sy.campus ? "found" : "not found") + ", section " + (sy.section ? "found" : "not found") + ", office hours " + (sy.office ? "found" : "not found") + ", faculty name " + (sy.faculty ? "found" : "not found") + "." + (c.accepted && c.accepted[2] ? " Accepted by the reviewer." : "") : "The current syllabus could not be read.") : "Not checked yet."), 9);
+      gap(4);
+      if (m.opts.assess && (sc.assessments || []).length) {
+        heading("Assessment evidence", "Counts of graded samples in each level folder. Student work is counted, never listed. Samples needed per level: " + nd + ".");
+        var yn = function (b) { return b ? { t: "Yes", color: XC.ok, bold: true } : { t: "No", color: XC.miss, bold: true }; };
+        var cnt = function (n) { return { t: String(n || 0), color: (n || 0) >= nd ? XC.ok : XC.miss, bold: true }; };
+        table([{ h: "Assessment", w: CW - 290 }, { h: "Instrument", w: 58, align: "center" }, { h: "Key / rubric", w: 58, align: "center" }, { h: "High", w: 58, align: "center" }, { h: "Medium", w: 58, align: "center" }, { h: "Low", w: 58, align: "center" }],
+          sc.assessments.map(function (a) { return [{ t: a.name, bold: true }, yn(a.ins), yn(a.key), cnt(a.h), cnt(a.m), cnt(a.l)]; }));
+      }
+      if ((sc.issues || []).length) { heading("Found by the automatic check"); sc.issues.forEach(function (x) { para("•  " + x, 9, F.r, C.ink, 4); }); gap(6); }
+      if (m.opts.comments) {
+        var cms = m.comments(c);
+        heading("Review comments");
+        if (!cms.length) para("No comments recorded.", 9, F.i, C.muted);
+        else table([{ h: "Date", w: 56 }, { h: "Folder", w: 72 }, { h: "From", w: 78 }, { h: "Status", w: 66 }, { h: "Comment", w: CW - 272 }], cms.map(function (x) {
+          return [fmtDate((x.at || "").slice(0, 10)), x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", personName(x.by) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), x.kind === "issue" && !x.parent ? { t: { open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "", pill: { open: "miss", fixed: "part", resolved: "ok" }[x.status] || "none" } : "", x.text || ""];
+        }));
+      }
+    });
+
+    // sign-off
+    ensure(110); gap(16);
+    pg.drawRectangle({ x: M, y: y, width: CW, height: 0.8, color: C.line }); gap(18);
+    txt("REVIEW SIGN-OFF", M, y - 8, 8.5, F.b, C.accent); gap(22);
+    var sw = (CW - 24) / 3;
+    if (sig) { ensure(80); gap(26); }
+    [["Reviewer" + (m.reviewerEmail ? " · " + m.reviewerEmail : ""), m.reviewer || ""], ["Signature", ""], ["Date", sig ? m.generated.split(",")[0] : ""]].forEach(function (s, j) {
+      var x = M + j * (sw + 12); txt(s[1], x, y - 22, 10, F.r, C.ink);
+      if (j === 1 && sig) { var sh = 46, swd = sig.width * sh / sig.height; if (swd > sw - 8) { swd = sw - 8; sh = sig.height * swd / sig.width; } pg.drawImage(sig, { x: x + 4, y: y - 30, width: swd, height: sh }); } pg.drawRectangle({ x: x, y: y - 28, width: sw, height: 0.8, color: C.muted }); txt(s[0], x, y - 40, 8, F.r, C.muted);
+    });
+    gap(50);
+    para("This report reflects the course file folders on SharePoint as last checked by Folio (" + m.lastScan + ") and the reviewer's decisions and comments recorded in Folio. It contains no student names.", 8, F.i, C.muted);
+
+    // footers
+    var pages = doc.getPages();
+    pages.forEach(function (p, i) {
+      pg = p;
+      pg.drawRectangle({ x: M, y: 40, width: CW, height: 0.5, color: C.line });
+      var fl = "Folio · " + m.kicker + " · Generated " + m.generated; txt(fl, M, 28, 7.5, F.r, C.muted);
+      var pn = "Page " + (i + 1) + " of " + pages.length; txt(pn, W - M - tw(pn, F.r, 7.5), 28, 7.5, F.r, C.muted);
+    });
+    return new Blob([await doc.save()], { type: "application/pdf" });
+  }
+
+  /* --- Excel (styled workbook written directly, charts as pictures) --- */
+  var CRC_T = (function () { var t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(b) { var c = 0xFFFFFFFF; for (var i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function zip(files) {
+    var enc = new TextEncoder(), parts = [], central = [], off = 0;
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), data = typeof f.data === "string" ? enc.encode(f.data) : f.data, crc = crc32(data);
+      var h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true); h.setUint16(10, 0, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+      parts.push(new Uint8Array(h.buffer), name, data);
+      var c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true); c.setUint16(12, 0, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, name.length, true); c.setUint32(42, off, true);
+      central.push(new Uint8Array(c.buffer), name);
+      off += 30 + name.length + data.length;
+    });
+    var csize = central.reduce(function (a, b) { return a + b.length; }, 0);
+    var e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
+    return new Blob(parts.concat(central, [new Uint8Array(e.buffer)]), { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  }
+  function xe(s) { return String(s == null ? "" : s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function colL(i) { var s = ""; i++; while (i) { var r = (i - 1) % 26; s = String.fromCharCode(65 + r) + s; i = Math.floor((i - 1) / 26); } return s; }
+  // Style ids (see stylesXML)
+  var XS = { title: 1, sub: 2, head: 3, body: 4, pct: 5, ok: 6, part: 7, miss: 8, none: 9, label: 10, kpiN: 11, kpiL: 12, center: 13, section: 14, val: 15, bold: 16 };
+  function stylesXML() {
+    var font = function (sz, col, b, i) { return "<font>" + (b ? "<b/>" : "") + (i ? "<i/>" : "") + '<sz val="' + sz + '"/><color rgb="FF' + col.slice(1) + '"/><name val="Calibri"/><family val="2"/></font>'; };
+    var fill = function (col) { return '<fill><patternFill patternType="solid"><fgColor rgb="FF' + col.slice(1) + '"/><bgColor indexed="64"/></patternFill></fill>'; };
+    var fonts = [font(11, XC.ink), font(18, XC.accent, 1), font(10, XC.muted), font(10, "#FFFFFF", 1), font(10, XC.ink), font(10, XC.ok, 1), font(10, XC.part, 1), font(10, XC.miss, 1), font(10, XC.muted), font(10, XC.ink, 1), font(20, XC.accent, 1), font(13, XC.ink, 1)];
+    var fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>', fill(XC.accent), fill(XC.okSoft), fill(XC.partSoft), fill(XC.missSoft), fill(XC.noneSoft), fill(XC.sunk)];
+    var bc = 'rgb="FF' + XC.line.slice(1) + '"';
+    var borders = ["<border><left/><right/><top/><bottom/><diagonal/></border>", '<border><left style="thin"><color ' + bc + '/></left><right style="thin"><color ' + bc + '/></right><top style="thin"><color ' + bc + '/></top><bottom style="thin"><color ' + bc + "/></bottom><diagonal/></border>", '<border><left/><right/><top/><bottom style="medium"><color rgb="FF' + XC.accent.slice(1) + '"/></bottom><diagonal/></border>'];
+    var xf = function (f, fi, b, al, num) { return '<xf numFmtId="' + (num || 0) + '" fontId="' + f + '" fillId="' + fi + '" borderId="' + b + '" xfId="0"' + (f ? ' applyFont="1"' : "") + (fi ? ' applyFill="1"' : "") + (b ? ' applyBorder="1"' : "") + (num ? ' applyNumberFormat="1"' : "") + (al ? ' applyAlignment="1"><alignment ' + al + "/></xf>" : "/>"); };
+    var top = 'vertical="top" wrapText="1"', cen = 'horizontal="center" vertical="center" wrapText="1"';
+    var xfs = [xf(0, 0, 0), xf(1, 0, 0, 'vertical="center"'), xf(2, 0, 0, 'vertical="center"'), xf(3, 2, 1, 'vertical="center" wrapText="1"'), xf(4, 0, 1, top), xf(9, 0, 1, 'horizontal="center" vertical="top"', 9), xf(5, 3, 1, cen), xf(6, 4, 1, cen), xf(7, 5, 1, cen), xf(8, 6, 1, cen), xf(9, 0, 0, 'vertical="top"'), xf(10, 7, 0, 'horizontal="center" vertical="center"'), xf(2, 7, 0, 'horizontal="center" vertical="center" wrapText="1"'), xf(4, 0, 1, 'horizontal="center" vertical="top" wrapText="1"'), xf(11, 0, 2, 'vertical="center"'), xf(4, 0, 0, 'vertical="top" wrapText="1"'), xf(9, 0, 1, top)];
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="' + fonts.length + '">' + fonts.join("") + '</fonts><fills count="' + fills.length + '">' + fills.join("") + '</fills><borders count="' + borders.length + '">' + borders.join("") + '</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="' + xfs.length + '">' + xfs.join("") + '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  }
+  function XSheet(name) { this.name = name; this.rows = []; this.merges = []; this.cols = []; this.images = []; this.freeze = 0; this.filter = null; }
+  XSheet.prototype.row = function (cells, ht) { this.rows.push({ cells: cells, ht: ht }); return this.rows.length; };
+  XSheet.prototype.xml = function (imgRel) {
+    var h = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>';
+    h += '<sheetViews><sheetView workbookViewId="0" showGridLines="0"' + (this.freeze ? "" : ' tabSelected="0"') + ">" + (this.freeze ? '<pane ySplit="' + this.freeze + '" topLeftCell="A' + (this.freeze + 1) + '" activePane="bottomLeft" state="frozen"/>' : "") + "</sheetView></sheetViews><sheetFormatPr defaultRowHeight=\"15\"/>";
+    if (this.cols.length) h += "<cols>" + this.cols.map(function (w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join("") + "</cols>";
+    h += "<sheetData>";
+    this.rows.forEach(function (r, ri) {
+      h += '<row r="' + (ri + 1) + '"' + (r.ht ? ' ht="' + r.ht + '" customHeight="1"' : "") + ">";
+      (r.cells || []).forEach(function (c, ci) {
+        if (c == null) return; if (typeof c !== "object") c = { v: c };
+        var ref = colL(ci) + (ri + 1), s = c.s ? ' s="' + c.s + '"' : "";
+        if (c.v === "" || c.v == null) h += '<c r="' + ref + '"' + s + "/>";
+        else if (typeof c.v === "number") h += '<c r="' + ref + '"' + s + "><v>" + c.v + "</v></c>";
+        else h += '<c r="' + ref + '"' + s + ' t="inlineStr"><is><t xml:space="preserve">' + xe(c.v) + "</t></is></c>";
+      });
+      h += "</row>";
+    });
+    h += "</sheetData>";
+    if (this.filter) h += '<autoFilter ref="' + this.filter + '"/>';
+    if (this.merges.length) h += '<mergeCells count="' + this.merges.length + '">' + this.merges.map(function (m) { return '<mergeCell ref="' + m + '"/>'; }).join("") + "</mergeCells>";
+    h += '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/>';
+    if (imgRel) h += '<drawing r:id="' + imgRel + '"/>';
+    return h + "</worksheet>";
+  };
+  function drawingXML(imgs) {
+    var h = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">';
+    imgs.forEach(function (im, i) {
+      h += '<xdr:oneCellAnchor><xdr:from><xdr:col>' + im.col + "</xdr:col><xdr:colOff>" + (im.colOff || 0) + "</xdr:colOff><xdr:row>" + im.row + "</xdr:row><xdr:rowOff>" + (im.rowOff || 0) + '</xdr:rowOff></xdr:from><xdr:ext cx="' + Math.round(im.w * 9525) + '" cy="' + Math.round(im.h * 9525) + '"/>' +
+        '<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="' + (i + 2) + '" name="' + xe(im.name) + '" descr="' + xe(im.name) + '"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip r:embed="rId' + (i + 1) + '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + Math.round(im.w * 9525) + '" cy="' + Math.round(im.h * 9525) + '"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor>';
+    });
+    return h + "</xdr:wsDr>";
+  }
+  function writeXLSX(sheets, meta) {
+    var files = [], media = 0, ct = ['<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>', '<Default Extension="xml" ContentType="application/xml"/>', '<Default Extension="png" ContentType="image/png"/>', '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>', '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>', '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'];
+    var wbRels = [];
+    sheets.forEach(function (sh, i) {
+      var n = i + 1, rel = null;
+      if (sh.images.length) {
+        rel = "rId1";
+        files.push({ name: "xl/worksheets/_rels/sheet" + n + ".xml.rels", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing' + n + '.xml"/></Relationships>' });
+        files.push({ name: "xl/drawings/drawing" + n + ".xml", data: drawingXML(sh.images) });
+        files.push({ name: "xl/drawings/_rels/drawing" + n + ".xml.rels", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + sh.images.map(function (im, j) { media++; files.push({ name: "xl/media/image" + media + ".png", data: im.bytes }); return '<Relationship Id="rId' + (j + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image' + media + '.png"/>'; }).join("") + "</Relationships>" });
+        ct.push('<Override PartName="/xl/drawings/drawing' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>');
+      }
+      files.push({ name: "xl/worksheets/sheet" + n + ".xml", data: sh.xml(rel) });
+      ct.push('<Override PartName="/xl/worksheets/sheet' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>');
+      wbRels.push('<Relationship Id="rId' + n + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + n + '.xml"/>');
+    });
+    wbRels.push('<Relationship Id="rId' + (sheets.length + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>');
+    var defNames = sheets.map(function (sh, i) { return sh.filter ? '<definedName name="_xlnm._FilterDatabase" localSheetId="' + i + '" hidden="1">\'' + xe(sh.name) + "'!$" + sh.filter.replace(/(\D+)(\d+):(\D+)(\d+)/, "$1$$$2:$$$3$$$4") + "</definedName>" : ""; }).join("");
+    files.unshift(
+      { name: "[Content_Types].xml", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' + ct.join("") + "</Types>" },
+      { name: "_rels/.rels", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>' },
+      { name: "docProps/core.xml", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>' + xe(meta.title) + "</dc:title><dc:creator>" + xe(meta.author || "Folio") + '</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">' + new Date().toISOString().slice(0, 19) + "Z</dcterms:created></cp:coreProperties>" },
+      { name: "xl/workbook.xml", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView activeTab="0"/></bookViews><sheets>' + sheets.map(function (sh, i) { return '<sheet name="' + xe(sh.name) + '" sheetId="' + (i + 1) + '" r:id="rId' + (i + 1) + '"/>'; }).join("") + "</sheets>" + (defNames ? "<definedNames>" + defNames + "</definedNames>" : "") + "</workbook>" },
+      { name: "xl/_rels/workbook.xml.rels", data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + wbRels.join("") + "</Relationships>" },
+      { name: "xl/styles.xml", data: stylesXML() });
+    return zip(files);
+  }
+  function stCell(word, s) { return { v: word, s: { ok: XS.ok, acc: XS.ok, part: XS.part, miss: XS.miss, none: XS.none, complete: XS.ok, in_progress: XS.part, not_due: XS.none, overdue: XS.miss }[s] || XS.center }; }
+  async function buildXLSX(m, charts) {
+    var logo = await logoPNG(96), sheets = [];
+    // Summary
+    var su = new XSheet("Summary"); su.cols = [7, 24, 14, 14, 14, 14, 14, 14, 14]; su.images.push({ name: "Folio logo", bytes: logo, col: 0, row: 0, colOff: 30000, rowOff: 50000, w: 40, h: 40 });
+    su.row([null, { v: "Folio · " + m.kicker, s: XS.title }], 34); su.merges.push("B1:I1");
+    su.row([null, { v: "Abu Dhabi University · College of Arts, Education and Social Sciences · Department of Education", s: XS.sub }], 18); su.merges.push("B2:I2");
+    su.row([]);
+    su.row([null, { v: m.title, s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }], 24);
+    su.row([null, { v: m.subtitle, s: XS.sub }]);
+    su.row([]);
+    m.meta.forEach(function (kv) { su.row([null, { v: kv[0], s: XS.label }, { v: kv[1], s: XS.val }]); su.merges.push("C" + su.rows.length + ":I" + su.rows.length); });
+    su.row([]);
+    var kr = [null], kl = [null]; m.kpis.forEach(function (k, i) { kr.push({ v: k[1], s: XS.kpiN }); kl.push({ v: k[0], s: XS.kpiL }); });
+    su.row(kr, 34); su.row(kl, 30); su.row([]);
+    su.row([null, { v: m.scope === "course" ? "At a glance" : "Analysis", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }, { v: "", s: XS.section }], 24);
+    var r0 = su.rows.length + 1;
+    charts.forEach(function (c, i) { var w = 640, h = Math.round(c.h * w / c.w); su.images.push({ name: "Chart " + (i + 1), bytes: c.bytes, col: 1, row: r0 - 1, rowOff: 60000, w: w, h: h }); var rowsNeeded = Math.ceil((h + 20) / 20); for (var k = 0; k < rowsNeeded; k++) su.row([]); r0 += rowsNeeded; });
+    sheets.push(su);
+    // Course files
+    var cf = new XSheet("Course files"); cf.cols = [26, 30, 22, 24, 28, 12, 13, 9, 9, 13, 8, 12, 12, 12, 12, 12, 12, 12, 15, 10]; cf.freeze = 1;
+    var hdr = ["Program", "Course file", "Section / folder", "Instructor", "Email", "Term", "Due date", "Students", "Samples per level", "Status", "Done", "1 Checklist", "2 Syllabus", "3 Materials", "4 Assessment", "5 Attendance", "6 CRC", "7 SET", "Reviewer decision", "Open comments"];
+    cf.row(hdr.map(function (h) { return { v: h, s: XS.head }; }), 30);
+    m.files.forEach(function (c) {
+      var sc = scan(c), st = dstate(c), rv = (c.review || {}).status || "pending";
+      cf.row([{ v: c.programShort, s: XS.body }, { v: c.course, s: XS.bold }, { v: c.section || "", s: XS.body }, { v: c.instructor || "", s: XS.body }, { v: c.email || "", s: XS.body }, { v: c.term || "", s: XS.center }, { v: dueFor(c) ? fmtDate(dueFor(c)) : "", s: XS.center }, { v: +c.enrolled || "", s: XS.center }, { v: need(c), s: XS.center }, stCell(stateLabel(st), st), { v: sc.score / 100, s: XS.pct }]
+        .concat(CF.SECTIONS.map(function (s) { var it = itemState(sc, s.k); return stCell(ITEM_WORD[it.s], it.s); }))
+        .concat([stCell({ pending: "Not reviewed", approved: "Approved", revise: "Needs revision" }[rv], { pending: "none", approved: "ok", revise: "miss" }[rv]), { v: openComments(c.id).length, s: XS.center }]));
+    });
+    cf.filter = "A1:" + colL(hdr.length - 1) + (m.files.length + 1);
+    sheets.push(cf);
+    // Checklist
+    var ck = new XSheet("Checklist"); ck.cols = [30, 24, 34, 14, 80]; ck.freeze = 1;
+    ck.row(["Course file", "Instructor", "Item", "Result", "Finding"].map(function (h) { return { v: h, s: XS.head }; }), 22);
+    m.files.forEach(function (c) { var sc = scan(c); CF.SECTIONS.forEach(function (s) { var it = itemState(sc, s.k); ck.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: s.k + ". " + s.label, s: XS.body }, stCell(ITEM_WORD[it.s], it.s), { v: it.note, s: XS.body }]); }); });
+    ck.filter = "A1:E" + (m.files.length * 7 + 1);
+    sheets.push(ck);
+    if (m.opts.assess) {
+      var as = new XSheet("Assessments"); as.cols = [30, 24, 34, 12, 12, 12, 12, 12, 12]; as.freeze = 1;
+      as.row(["Course file", "Instructor", "Assessment", "Instrument", "Key / rubric", "High", "Medium", "Low", "Needed per level"].map(function (h) { return { v: h, s: XS.head }; }), 22);
+      m.files.forEach(function (c) { var nd = need(c); (scan(c).assessments || []).forEach(function (a) { var yn = function (b) { return stCell(b ? "Yes" : "No", b ? "ok" : "miss"); }, n = function (x) { return { v: x || 0, s: (x || 0) >= nd ? XS.ok : XS.miss }; }; as.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: a.name, s: XS.body }, yn(a.ins), yn(a.key), n(a.h), n(a.m), n(a.l), { v: nd, s: XS.center }]); }); });
+      if (as.rows.length === 1) as.row([{ v: "No assessment folders found yet.", s: XS.body }]);
+      sheets.push(as);
+    }
+    if (m.opts.comments) {
+      var co = new XSheet("Comments"); co.cols = [30, 24, 13, 18, 24, 14, 80]; co.freeze = 1;
+      co.row(["Course file", "Instructor", "Date", "Folder", "From", "Status", "Comment"].map(function (h) { return { v: h, s: XS.head }; }), 22);
+      m.files.forEach(function (c) { m.comments(c).forEach(function (x) { var stw = x.kind === "issue" && !x.parent ? ({ open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "") : ""; co.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: fmtDate((x.at || "").slice(0, 10)), s: XS.center }, { v: x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", s: XS.body }, { v: personName(x.by) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), s: XS.body }, stw ? stCell(stw, { Open: "miss", "Says fixed": "part", Resolved: "ok" }[stw]) : { v: "", s: XS.center }, { v: x.text || "", s: XS.body }]); }); });
+      if (co.rows.length === 1) co.row([{ v: "No comments recorded.", s: XS.body }]);
+      sheets.push(co);
+    }
+    var fd = new XSheet("Findings"); fd.cols = [30, 24, 100]; fd.freeze = 1;
+    fd.row(["Course file", "Instructor", "Found by the automatic check"].map(function (h) { return { v: h, s: XS.head }; }), 22);
+    m.files.forEach(function (c) { (scan(c).issues || []).forEach(function (x) { fd.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: x, s: XS.body }]); }); });
+    if (fd.rows.length === 1) fd.row([{ v: "Nothing found.", s: XS.body }]);
+    sheets.push(fd);
+    return writeXLSX(sheets, { title: m.kicker + " — " + m.title, author: m.reviewer });
+  }
+
+  async function runExport() {
+    var dl = S.downloads; if (!dl) { toast("Downloads are not available in this view."); return; }
+    var btn = $("expGo"); if (btn) { btn.disabled = true; btn.textContent = "Preparing…"; }
+    try {
+      var m = buildModel(); if (!m.files.length) return;
+      var charts = await buildCharts(m);
+      var blob = S.exp.fmt === "pdf" ? await buildPDF(m, charts) : await buildXLSX(m, charts);
+      var name = ("Folio - " + (m.scope === "course" ? m.title + (m.files[0].instructor && m.title.indexOf(m.files[0].instructor) < 0 ? " - " + m.files[0].instructor : "") : m.title) + " - " + m.sem).replace(/[\\/:*?"<>|·]+/g, "-").replace(/\s+/g, " ").replace(/–/g, "-").trim() + (S.exp.fmt === "pdf" ? ".pdf" : ".xlsx");
+      S._lastExport = { name: name, size: blob.size, blob: blob };
+      await dl.save({ filename: name, data: blob });
+      toast("Report saved");
+    } catch (e) { if (!(e && e.code === "declined")) toast((e && e.message) ? e.message : "Could not create the report."); if (window.console) console.error(e); }
+    finally { var b2 = $("expGo"); if (b2) { b2.disabled = false; b2.textContent = "Create " + (S.exp.fmt === "pdf" ? "PDF" : "Excel") + " report"; } }
+  }
+
+
+  /* ---------- 9. Batch reminders ---------- */
+  function reminderGroups(f) {
+    var soon = Date.now() + 14 * 864e5, by = {};
+    semCourses().forEach(function (c) {
+      var st = dstate(c), d = dueFor(c), dueSoon = d && new Date(d) <= new Date(soon);
+      var take = (f.overdue && st === "overdue") || (f.inprog && st === "in_progress") || (f.soon && st === "not_due" && dueSoon) || (f.overdue && st === "in_progress" && isOverdue(c));
+      if (!take || !c.instructor) return;
+      var k = (c.email || c.instructor).toLowerCase(); (by[k] = by[k] || { name: c.instructor, email: c.email, files: [] }).files.push(c);
+    });
+    return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+  }
+  function reminderBody(g) {
+    var sem = semLabel(), L = [salute(g.name), "", "This is a friendly reminder about your course files for " + sem + ":", ""];
+    g.files.forEach(function (c) {
+      var sc = scan(c), nd = need(c);
+      L.push("• " + c.course + (c.section && !/,/.test(c.section) ? " (" + c.section + ")" : "") + " — " + stateLabel(dstate(c)) + (dueFor(c) ? ", due " + fmtDate(dueFor(c)) : "") + (sc.state !== "not_started" ? ", " + sc.score + "% complete" : ""));
+      if (sc.state === "not_started") L.push("   The folder is still empty.");
+      else (sc.items || []).filter(function (i) { return i.s !== "ok"; }).forEach(function (i) { L.push("   - " + i.k + ". " + CF.SECTIONS[i.k - 1].short + ": " + i.note); });
+      L.push("   Graded samples needed: " + nd + " High, " + nd + " Medium, " + nd + " Low per assessment. Folder: " + folderUrl(c.path), "");
+    });
+    L.push("Please also make sure each syllabus states the section and campus.");
+    if (S.config.link) L.push("You can follow your course file status here: " + S.config.link);
+    return L.join("\n");
+  }
+  function renderReminders() {
+    S._panelIs = "rem";
+    var f = S.remF || (S.remF = { overdue: true, inprog: true, soon: false });
+    var gs = reminderGroups(f), sem = semLabel();
+    var h = '<div class="meta" style="gap:14px">' +
+      '<label><input type="checkbox" data-remf="overdue"' + (f.overdue ? " checked" : "") + "> Overdue</label>" +
+      '<label><input type="checkbox" data-remf="inprog"' + (f.inprog ? " checked" : "") + "> In progress (incomplete)</label>" +
+      '<label><input type="checkbox" data-remf="soon"' + (f.soon ? " checked" : "") + "> Not started, due within 14 days</label></div>" +
+      '<p class="note" style="margin:0">' + gs.length + " instructor" + (gs.length === 1 ? "" : "s") + " to remind. Each email lists only that instructor’s course files and missing items. Open each one in Outlook, check it and press Send, then mark it as sent.</p>";
+    if (!gs.length) h += '<p class="empty">Nobody matches these filters.</p>';
+    gs.forEach(function (g, i) {
+      var href = "https://outlook.office.com/mail/deeplink/compose?to=" + encodeURIComponent(g.email || "") + "&subject=" + encodeURIComponent("Reminder: course files " + sem) + "&body=" + encodeURIComponent(reminderBody(g));
+      var last = g.files.map(function (c) { return c.emailedAt || ""; }).sort().pop();
+      h += '<div class="cmt"><div class="h"><b>' + esc(g.name) + "</b><span>" + esc(g.email || "no email recorded") + "</span>" + (last ? "<span>last emailed " + fmtDT(last) + "</span>" : "") + '</div><div class="t">' + g.files.map(function (c) { return esc(c.course) + " — " + esc(stateLabel(dstate(c))); }).join("<br>") + '</div><div class="acts"><a class="btn small primary" target="_blank" rel="noopener" href="' + esc(href) + '">Open in Outlook ↗</a><button class="btn small" type="button" data-remcopy="' + i + '">Copy text</button><button class="btn small" type="button" data-remsent="' + i + '">Mark as sent</button></div></div>';
+    });
+    S._remGroups = gs;
+    sheetModal("Email reminders", "Batch reminders · " + sem, h);
+  }
+
+  /* ---------- 6. Import the term schedule ---------- */
+  var CAMP = { AD: "Abu Dhabi", AA: "Al Ain", DB: "Dubai" };
+  function normCode(s) { return String(s || "").replace(/\(E\)/gi, "").replace(/[\s-]/g, "").toUpperCase(); }
+  function rowCodes(c) {
+    var name = c.course || "", campf = [];
+    if (/^EDUL680\s*A\b/i.test(name)) return { codes: ["EDUL680A"], camp: (name.match(/\b(AD|AA|DB)\b/g) || []) };
+    var codes = name.split(/\s+-\s+|\s*\+\s*/).map(normCode).filter(function (x) { if (CAMP[x]) { campf.push(x); return false; } return !!x; });
+    return { codes: codes, camp: campf };
+  }
+  function nameKeys(c) {
+    var k = [];
+    if (c.section && /,/.test(c.section)) k.push(c.section.split(",")[0].trim().toLowerCase());
+    var parts = norm(c.instructor || "").split(" ").filter(function (w) { return w.length > 2; });
+    if (parts.length) { k.push(parts[parts.length - 1]); if (parts[0].length > 3) k.push(parts[0]); }
+    return k;
+  }
+  function guessProgram(code) {
+    var pf = programFolders();
+    var pick = function (re) { return pf.filter(function (p) { return re.test(p); })[0] || ""; };
+    if (/^EDUT/.test(code)) return pick(/technolog/i);
+    if (/^EDUP/.test(code)) return pick(/philosophy/i);
+    if (/^EDUL|^EDU5/.test(code)) return pick(/leadership/i);
+    return pick(/diploma/i);
+  }
+  async function importSchedule(file) {
+    var X; try { X = await loadXLSX(); } catch (e) { toast(e.message); return; }
+    var wb = X.read(await file.arrayBuffer(), { cellDates: true });
+    var raw = X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "" });
+    var col = function (r, names) { for (var i = 0; i < names.length; i++) if (r[names[i]] !== undefined && r[names[i]] !== "") return r[names[i]]; return ""; };
+    var lines = raw.map(function (r) {
+      return { code: normCode(col(r, ["Descr", "Course", "Subject Code"])), section: String(col(r, ["Section"])), enr: +col(r, ["Tot Enrl", "Enrolled", "Total Enrolled"]) || 0, name: String(col(r, ["Name", "Instructor"])), campus: String(col(r, ["Campus"])).toUpperCase(), start: col(r, ["Start Date"]), end: col(r, ["End Date"]) };
+    }).filter(function (l) { return /^ED/.test(l.code) && l.name && !/be assigned/i.test(l.name); });
+    if (!lines.length) { toast("No Education courses were found in that file."); return; }
+    var starts = lines.map(function (l) { return +new Date(l.start); }).filter(Boolean), semStart = Math.min.apply(null, starts);
+    function termOf(ls) {
+      var t = ls.map(function (l) { var s = +new Date(l.start), e = +new Date(l.end); if (!s || !e) return ""; if ((e - s) / 864e5 > 70) return "Full semester"; return s - semStart < 21 * 864e5 ? "Term A" : "Term B"; }).filter(Boolean);
+      return t[0] || "";
+    }
+    var used = {}, updates = [], notOn = [];
+    semCourses().forEach(function (c) {
+      var rc = rowCodes(c), keys = nameKeys(c);
+      var m = lines.filter(function (l, i) {
+        if (rc.codes.indexOf(l.code) < 0) return false;
+        if (rc.camp.length && rc.camp.indexOf(l.campus) < 0) return false;
+        var nl = l.name.toLowerCase();
+        if (keys.length && !keys.some(function (k) { return nl.indexOf(k) >= 0; })) return false;
+        return true;
+      });
+      m.forEach(function (l) { used[lines.indexOf(l)] = 1; });
+      if (!m.length) { notOn.push(c); return; }
+      var enr = m.reduce(function (s, l) { return s + l.enr; }, 0), camps = Array.from(new Set(m.map(function (l) { return CAMP[l.campus] || l.campus; }))).sort(), term = termOf(m);
+      var ch = {};
+      if ((+c.enrolled || 0) !== enr) ch.enrolled = enr;
+      if (term && c.term !== term) ch.term = term;
+      if (JSON.stringify(c.campuses || []) !== JSON.stringify(camps)) ch.campuses = camps;
+      if (Object.keys(ch).length) updates.push({ c: c, ch: ch });
+    });
+    var missing = {}; lines.forEach(function (l, i) { if (used[i]) return; var k = l.code + "|" + l.name; (missing[k] = missing[k] || { code: l.code, name: l.name, enr: 0, camps: {} }); missing[k].enr += l.enr; missing[k].camps[CAMP[l.campus] || l.campus] = 1; });
+    S._imp = { updates: updates, notOn: notOn, missing: Object.keys(missing).map(function (k) { return missing[k]; }), file: file.name, n: lines.length };
+    renderImport();
+  }
+  function renderImport() {
+    S._panelIs = "imp";
+    var I = S._imp, h = '<p class="note" style="margin:0">' + esc(I.file) + ": " + I.n + " Education class lines read and compared with Folio.</p>";
+    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Updates to apply (' + I.updates.length + ")</h3>";
+    if (!I.updates.length) h += '<p class="note">Class sizes, terms and campuses already match the schedule.</p>';
+    else {
+      h += '<div style="overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px"><table class="amx"><thead><tr><th></th><th>Course file</th><th>Students</th><th>Term</th><th>Campus</th></tr></thead><tbody>' + I.updates.map(function (u, i) {
+        var c = u.c, ch = u.ch, f = function (k, cur) { return ch[k] !== undefined ? '<span class="muted">' + esc(cur || "—") + "</span> → <b>" + esc(Array.isArray(ch[k]) ? ch[k].join(", ") : ch[k]) + "</b>" : esc(Array.isArray(cur) ? (cur || []).join(", ") : (cur || "")); };
+        return '<tr><td><input type="checkbox" data-impu="' + i + '" checked aria-label="Apply"></td><td>' + esc(c.course) + "<br><span class=\"note\">" + esc(c.instructor || c.section || "") + "</span></td><td>" + f("enrolled", c.enrolled) + "</td><td>" + f("term", c.term) + "</td><td>" + f("campuses", c.campuses) + "</td></tr>";
+      }).join("") + '</tbody></table></div><div class="actions"><button class="btn primary" type="button" id="impApply">Apply selected updates</button></div>';
+    }
+    h += "</section>";
+    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">On the schedule but no course file in Folio (' + I.missing.length + ")</h3>";
+    h += I.missing.length ? I.missing.map(function (m, i) { return '<div class="cmt"><div class="h"><b>' + esc(m.code) + "</b><span>" + esc(m.name) + "</span><span>" + esc(Object.keys(m.camps).join(", ")) + " · " + m.enr + " student" + (m.enr === 1 ? "" : "s") + '</span></div><div class="acts"><button class="btn small" type="button" data-impadd="' + i + '">Add course file…</button></div></div>'; }).join("") : '<p class="note">None.</p>';
+    h += '<p class="note" style="margin:0">A course may also be missing because its SharePoint folder uses a different code or instructor name. Check the folder before adding.</p></section>';
+    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">In Folio but not on the schedule (' + I.notOn.length + ")</h3>";
+    h += I.notOn.length ? I.notOn.map(function (c) { return '<div class="cmt"><div class="h"><b>' + esc(c.course) + "</b><span>" + esc(c.instructor || c.section || "") + '</span></div><div class="acts"><button class="btn small" type="button" data-impopen="' + esc(c.id) + '">Open</button></div></div>'; }).join("") : '<p class="note">None.</p>';
+    h += "</section>";
+    sheetModal("Schedule check", "Import schedule", h);
+  }
+  async function applyImport() {
+    var I = S._imp, sel = Array.prototype.filter.call(document.querySelectorAll("[data-impu]"), function (el) { return el.checked; }).map(function (el) { return I.updates[+el.dataset.impu]; });
+    for (var i = 0; i < sel.length; i++) await S.db.collection("courses").doc(sel[i].c.id).update(sel[i].ch);
+    toast(sel.length + " course files updated from the schedule");
+    I.updates = I.updates.filter(function (u) { return sel.indexOf(u) < 0; }); renderImport();
+  }
+  function prefillAdd(m) {
+    S.open = "__new"; renderAddSheet();
+    var prog = guessProgram(m.code); if (prog) $("nProg").value = prog;
+    var folder = semCourses().filter(function (c) { return rowCodes(c).codes.indexOf(m.code) >= 0; })[0];
+    $("nCourse").value = folder ? folder.course : m.code;
+    $("nSection").value = /,/.test(m.name) ? m.name : "";
+    var parts = m.name.split(","); $("nInst").value = parts.length > 1 ? (parts[1].trim().split(/\s+/)[0] + " " + parts[0].trim()) : m.name;
+    var p = S.people.filter(function (q) { return norm(q.name) === norm($("nInst").value); })[0]; if (p) $("nEmail").value = p.email;
+    $("nStud").value = m.enr || "";
+  }
+
+  /* ---------- boot ---------- */
+  async function resolveNames() {
+    if (!S.user) return;
+    var ids = Array.from(new Set(S.comments.map(function (m) { return m.by; }).filter(Boolean))).filter(function (id) { return !S.names[id]; });
+    if (!ids.length) return;
+    try { var ps = await S.user.profiles(ids); Object.assign(S.names, ps); if (S.open) renderSheet(); } catch (e) {}
+  }
+  async function boot() {
+    renderAll();
+    var claude = window.claude;
+    if (!claude || !claude.use) { renderGrid(); return; }
+    var dbP = claude.use("db"), userP = claude.use("user"), mcpP = claude.use("mcp");
+    S.user = await userP;
+    if (S.user) {
+      try { S.isLead = !!(await S.user.canEdit()); } catch (e) {}
+      try { S.me = await S.user.id(); } catch (e) {}
+      try { var me = await S.user.me(); S.myEmail = ((me && me.email) || "").toLowerCase(); S.myName = norm((me && me.name) || ""); S.myDisplayName = (me && me.name) || ""; } catch (e) {}
+      if (!S.myName) { try { S.myName = norm(await S.user.name()); } catch (e) {} }
+    }
+    S.db = await dbP;
+    if (!S.db) { renderAll(); return; }
+    S.db.collection("courses").onSnapshot(function (snap) {
+      S.courses = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+      if (!S.isLead && S.courses.some(mine) && !S._scoped) { S.scope = "mine"; S._scoped = true; }
+      if (S.pendingOpen && course(S.pendingOpen)) { var po = S.pendingOpen; S.pendingOpen = null; setTimeout(function () { openSheet(po); }, 0); }
+      renderAll();
+    }, function (e) { banner("err", "Could not load course files (" + esc(e.code) + ")."); });
+    S.db.collection("comments").onSnapshot(function (snap) { S.comments = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); renderAll(); resolveNames(); });
+    S.db.collection("people").onSnapshot(function (snap) { S.people = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); }); });
+    S.db.collection("config").doc("settings").onSnapshot(function (d) { S.config = (d.exists && d.data()) || {}; CF.setYear(curYear()); renderAll(); });
+    if (S.isLead) { S.mcp = await mcpP; try { S.downloads = await claude.use("downloads"); } catch (e) {} }
+    renderAll();
+  }
+  boot();
+})();
+
+</script>
