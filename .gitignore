@@ -1,0 +1,7 @@
+node_modules/
+__pycache__/
+*.xlsx
+*.pdf
+scans*.json
+test*.html
+.DS_Store
