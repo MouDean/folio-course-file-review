@@ -1,0 +1,12 @@
+<!-- @dsCard group="Status" height=120 subtitle="Checker status and reviewer decision" -->
+<div class="demo"><div><span class="st complete">Complete</span><span class="st progress">In progress</span><span class="st notdue">Not due yet</span><span class="st overdue">Overdue</span></div>
+<div><span class="st approved">✓ Approved</span><span class="st ready">Ready to review</span><span class="st revise">Needs revision</span><span class="st pending">Not reviewed</span></div></div>
+<style>
+body{margin:0;background:var(--surface);font-family:var(--font-body)}
+.demo{display:grid;gap:12px;padding:22px}
+.demo div{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.st{display:inline-flex;align-items:center;font-size:12px;font-weight:600;border-radius:var(--radius-pill);padding:2px 9px;line-height:1.5;white-space:nowrap}
+.complete{background:var(--ok-soft);color:var(--ok)}.progress{background:var(--part-soft);color:var(--part)}.notdue{background:var(--none-soft);color:var(--muted)}.overdue{background:var(--miss);color:var(--surface)}
+.approved{background:var(--ok);color:var(--surface)}.ready{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent-line)}.revise{background:var(--miss-soft);color:var(--miss)}.pending{color:var(--muted);font-weight:500;padding-inline:0}
+</style>
+<script></script>

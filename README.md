@@ -13,6 +13,7 @@ Folio is a single-page tool for reviewing university course files on SharePoint 
 - **Emails**: per-course-file review emails and batch reminders, opened in Outlook for the reviewer to send.
 - **Reports**: quick Excel report, plus formal PDF or styled Excel exports for a course file, an instructor, a program or the whole department, with charts and a signed sign-off block.
 - Light / dark / auto theme.
+- Due-date cards per term, a "Ready to review" queue, collapsible program groups, sortable columns and keyboard navigation (↑/↓, Esc) in the course file panel.
 
 Student work is only counted, never listed — no student names appear anywhere.
 
@@ -25,6 +26,7 @@ src/app.js        app logic (scanning, review, emails, semesters, settings)
 src/export.js     PDF / Excel export (inserted into app.js at /*@@EXPORT@@*/)
 build.py          builds dist/folio.html from src/
 dist/folio.html   the built page that is published as the artifact
+design-system/    colours, type, spacing and status components (tokens.json is the source)
 ```
 
 ## Build
@@ -34,6 +36,16 @@ python3 build.py
 ```
 
 This writes `dist/folio.html`. Publish that file as the artifact (same URL) to update the live tool.
+
+## Design system
+
+The look of Folio is documented in [`design-system/`](design-system/README.md): `tokens.json` holds every colour (light and dark), type style, spacing step and radius, with a usage note for each, and the brand book explains how status colours, wording and layout are used. After changing a colour, run:
+
+```
+python3 design-system/build_tokens.py
+```
+
+This regenerates `design-system/tokens.css` and checks that `src/top.html` uses the same colours.
 
 ## Runtime requirements
 

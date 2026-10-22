@@ -1,0 +1,37 @@
+<!-- @dsCard height=300 -->
+<div class="cover">
+<!--
+blocks: accent 288x176 (radius-xl), ok 136x112 (radius-lg), part 136x56 (radius-lg), ink 208x96 (radius-lg), accent-soft 176x96 (radius-lg)
+arrangement: one tall maroon slab with satellites, the right-hand group bleeding off the top edge, from x=496 to 960
+pattern: 7 status dots (radius-sm, 24px, space-2 gap) in a row across the ink block — Folio's own 7-item checklist is the most specifically-this-brand shape
+scales: space-2 8px, space-4 16px gaps; radius-sm 6, radius-lg 12, radius-xl 16
+-->
+<svg class="art" viewBox="0 0 480 300" aria-hidden="true">
+  <rect class="b-accent" x="0" y="-16" width="288" height="192" rx="16"/>
+  <rect class="b-ok" x="304" y="-16" width="176" height="128" rx="12"/>
+  <rect class="b-part" x="304" y="128" width="176" height="48" rx="12"/>
+  <rect class="b-ink" x="0" y="192" width="288" height="96" rx="12"/>
+  <rect class="b-soft" x="304" y="192" width="176" height="96" rx="12"/>
+  <g class="dots">
+    <rect class="d-ok" x="24" y="228" width="24" height="24" rx="6"/>
+    <rect class="d-ok" x="56" y="228" width="24" height="24" rx="6"/>
+    <rect class="d-ok" x="88" y="228" width="24" height="24" rx="6"/>
+    <rect class="d-part" x="120" y="228" width="24" height="24" rx="6"/>
+    <rect class="d-ok" x="152" y="228" width="24" height="24" rx="6"/>
+    <rect class="d-miss" x="184" y="228" width="24" height="24" rx="6"/>
+    <rect class="d-none" x="216" y="228" width="24" height="24" rx="6"/>
+  </g>
+</svg>
+<div class="name"><h1>Folio</h1><p>Course file review for the Department of Education.</p></div>
+</div>
+<style>
+html,body{margin:0;background:var(--bg)}
+.cover{position:relative;width:960px;height:300px;overflow:hidden;background:var(--bg)}
+.art{position:absolute;left:480px;top:0;width:480px;height:300px}
+.b-accent{fill:var(--accent)}.b-ok{fill:var(--ok)}.b-part{fill:var(--part)}.b-ink{fill:var(--ink)}.b-soft{fill:var(--accent-soft)}
+.d-ok{fill:var(--ok)}.d-part{fill:var(--part)}.d-miss{fill:var(--miss)}.d-none{fill:var(--line-strong)}
+.name{position:absolute;left:40px;bottom:36px;max-width:420px}
+.name h1{margin:0;font-family:var(--font-display);font-weight:700;font-size:120px;line-height:.92;letter-spacing:-.03em;color:var(--ink)}
+.name p{margin:16px 0 0;font-family:var(--font-body);font-size:14px;color:var(--muted)}
+</style>
+<script></script>
