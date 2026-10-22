@@ -12,7 +12,9 @@
     courses: [], comments: [], people: [], config: {}, cfgLoaded: false,
     view: (function () { try { var v = localStorage.getItem("folio-sem"); if (v && v.indexOf("/") > 0) { var p = v.split("/"); return { year: p[0], semester: p[1] }; } } catch (e) {} return null; })(),
     scope: "all", open: null, filters: { prog: "", term: "", state: "", inst: "", text: "" },
-    names: {}, scanning: false, kpiFilter: ""
+    names: {}, scanning: false, kpiFilter: "",
+    sort: { key: "course", dir: 1 }, order: [],
+    collapsed: (function () { try { return JSON.parse(localStorage.getItem("folio-collapsed") || "{}") || {}; } catch (e) { return {}; } })()
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -64,13 +66,19 @@
     var key = (+c.enrolled || 0) + "|" + JSON.stringify(s.syllabus || null) + "|" + JSON.stringify(c.accepted || null);
     var m = effMemo.get(s); if (m && m.key === key) return m.val;
     var items = (s.items || []).map(function (i) { return Object.assign({}, i); });
-    var issues = (s.issues || []).slice();
+    var issues = [], notes = (s.notes || []).slice();
+    // Older scans listed unsorted graded files as issues; they are accepted notes now.
+    (s.issues || []).forEach(function (x) { if (/graded files? not placed in a High \/ Medium \/ Low folder\.$/.test(x)) notes.push(x + " Accepted as uploaded."); else issues.push(x); });
     var byK = {}; items.forEach(function (i) { byK[i.k] = i; });
     var nd = need(c), short = [];
     (s.assessments || []).forEach(function (a) {
-      if (!(a.h && a.m && a.l)) return; // already reported as missing
-      var lv = []; if (a.h < nd) lv.push("High " + a.h); if (a.m < nd) lv.push("Medium " + a.m); if (a.l < nd) lv.push("Low " + a.l);
-      if (lv.length) short.push(a.name + ": " + nd + " samples per level needed, found " + lv.join(", ") + ".");
+      var unl = a.unl || 0, zeros = (a.h ? 0 : 1) + (a.m ? 0 : 1) + (a.l ? 0 : 1);
+      if (zeros > unl) return; // already reported as missing
+      var lv = [], gap = 0; [["High", a.h], ["Medium", a.m], ["Low", a.l]].forEach(function (p) { if (p[1] < nd) { lv.push(p[0] + " " + p[1]); gap += nd - p[1]; } });
+      if (!lv.length) return;
+      // Graded files that are uploaded but not sorted/named by level count towards the shortfall.
+      if (unl >= gap) { if (nd > 1) notes.push(a.name + ": " + nd + " samples per level needed; the shortfall is covered by " + unl + " graded file" + (unl === 1 ? "" : "s") + " not sorted by level. Accepted as uploaded."); return; }
+      short.push(a.name + ": " + nd + " samples per level needed, found " + lv.join(", ") + (unl ? " (plus " + unl + " not sorted by level)" : "") + ".");
     });
     if (short.length && byK[4]) {
       if (byK[4].s === "ok") byK[4].s = "part";
@@ -96,16 +104,35 @@
       if (ISSUE_OF[k]) issues = issues.filter(function (x) { return !ISSUE_OF[k].test(x); });
     });
     var ok = items.filter(function (i) { return i.s === "ok"; }).length, part = items.filter(function (i) { return i.s === "part"; }).length;
-    var val = Object.assign({}, s, { items: items, issues: issues, state: ok === 7 ? "complete" : "in_progress", score: Math.round(((ok + part * 0.5) / 7) * 100) });
+    var val = Object.assign({}, s, { items: items, issues: issues, notes: notes, state: ok === 7 ? "complete" : "in_progress", score: Math.round(((ok + part * 0.5) / 7) * 100) });
     effMemo.set(s, { key: key, val: val });
     return val;
   }
 
+  // What still needs the instructor's attention (drives the reminder lines in emails).
+  function sampleShort(c) { var sc = scan(c); if (sc.state === "not_started") return true; var it = (sc.items || []).filter(function (i) { return i.k === 4; })[0]; return !it || it.s !== "ok" || (sc.issues || []).some(function (x) { return /^Samples/.test(x); }); }
+  function syllabusShort(c) { var sc = scan(c); if (sc.state === "not_started") return true; return (sc.issues || []).some(function (x) { return /^Syllabus: the current syllabus must state/.test(x); }); }
+  // Ready-made reviewer comments. "accept" ones are recorded as notes (not open issues) and accept the item as done.
+  var PRESETS = [
+    { id: "named", sec: 4, accept: true, text: "Graded samples are uploaded, but the files are named after the students (or another name) rather than as in the model course file. Accepted as correct; no action needed." },
+    { id: "place", sec: 0, accept: true, text: "The files are uploaded, but not in the expected sub-folder or not named as in the model course file. Accepted as correct; no action needed." },
+    { id: "campus", sec: 2, accept: true, text: "The syllabus template has no Campus field; the section is stated. Accepted as correct; no action needed." },
+    { id: "manual", sec: 0, accept: true, text: "Checked manually by the reviewer. Accepted as correct; no action needed." },
+    { id: "tidy", sec: 4, accept: false, note: true, text: "Optional, for clarity: please place the graded samples in the High, Medium and Low folders next time." },
+    { id: "missing", sec: 0, accept: false, text: "Please upload the missing item(s) listed in this course file." }
+  ];
   function openComments(cid) { return S.comments.filter(function (m) { return m.courseId === cid && m.kind === "issue" && m.status !== "resolved"; }); }
   function dueFor(c) { var d = semDue(); return c.term === "Term A" ? d.A : c.term === "Term B" ? d.B : c.term === "Full semester" ? d.F : ""; }
   // Display status: an empty course file is fine until its due date.
   function dstate(c) { var s = scan(c).state; if (s !== "not_started") return s; return isOverdue(c) ? "overdue" : "not_due"; }
   function isOverdue(c) { var d = dueFor(c); return d && scan(c).state !== "complete" && new Date(d + "T23:59:59") < new Date(); }
+  // Complete by the checker but not yet approved: waiting for the reviewer.
+  function isReady(c) { return scan(c).state === "complete" && ((c.review || {}).status || "pending") !== "approved"; }
+  var PROG_ORDER = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
+  function progRank(p) { var i = PROG_ORDER.indexOf(p); return i < 0 ? 99 : i; }
+  // "EDC471(E) - EDUC510 - EDUC501 PC" -> main code + cross-listed codes
+  function splitCode(name) { var p = String(name || "").split(/\s+[-+]\s+/); if (p.length < 2 || !p.slice(1).every(function (x) { return /^[A-Za-z]{2,5}\s?\d{2,3}/.test(x); })) return { main: String(name || ""), rest: [] }; return { main: p[0], rest: p.slice(1) }; }
+  function daysTo(d) { if (!d) return null; var t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(d + "T00:00:00") - t) / 86400000); }
   function semCourses() { var k = semKey(); return S.courses.filter(function (c) { return !c.gone && !c.removed && (c.semester || "2026 - 2027/Fall") === k; }); }
   function norm(s) { return String(s || "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim(); }
   function mine(c) {
@@ -125,6 +152,8 @@
       if (f.state === "open" && !openComments(c.id).length) return false;
       if (f.state === "revise" && rv !== "revise") return false;
       if (f.state === "approved" && rv !== "approved") return false;
+      if (f.state === "ready" && !isReady(c)) return false;
+      if (f.state === "incomplete" && st === "complete") return false;
       if (["complete", "in_progress", "not_due", "overdue"].indexOf(f.state) >= 0 && dstate(c) !== f.state) return false;
       if (t && (c.course + " " + (c.instructor || "") + " " + (c.section || "")).toLowerCase().indexOf(t) < 0) return false;
       return true;
@@ -134,20 +163,43 @@
   /* ---------- render: summary ---------- */
   function renderSummary() {
     var base = semCourses().filter(function (c) { return S.scope !== "mine" || mine(c); });
-    var n = base.length, comp = 0, prog = 0, none = 0, late = 0, oc = 0, appr = 0;
-    base.forEach(function (c) { var s = dstate(c); if (s === "complete") comp++; else if (s === "in_progress") prog++; else if (s === "overdue") late++; else none++; oc += openComments(c.id).length; if ((c.review || {}).status === "approved") appr++; });
+    var n = base.length, comp = 0, prog = 0, none = 0, late = 0, oc = 0, appr = 0, ready = 0;
+    base.forEach(function (c) { var s = dstate(c); if (s === "complete") comp++; else if (s === "in_progress") prog++; else if (s === "overdue") late++; else none++; oc += openComments(c.id).length; if ((c.review || {}).status === "approved") appr++; if (isReady(c)) ready++; });
     $("sumTitle").textContent = S.scope === "mine" ? "Your course files" : "Department overview";
-    $("sumNote").textContent = n ? appr + " of " + n + " approved by the reviewer" : "";
-    var k = [["", n, "Course files", ""], ["complete", comp, "Complete", "ok"], ["in_progress", prog, "In progress", "part"], ["not_due", none, "Not due yet", "none"], ["overdue", late, "Overdue", "late"], ["open", oc, "Open comments", "kcm"]];
-    $("kpis").innerHTML = k.map(function (x) { return '<button type="button" class="kpi ' + x[3] + '" data-kpi="' + x[0] + '" aria-pressed="' + (S.filters.state === x[0] && x[0] !== "" ? "true" : "false") + '"><b>' + x[1] + "</b><span>" + x[2] + "</span></button>"; }).join("");
+    $("sumNote").textContent = n ? Math.round(comp / n * 100) + "% complete · " + appr + " of " + n + " approved" : "";
+    var k = [["", n, "Course files", ""], ["complete", comp, "Complete", "ok"], ["in_progress", prog, "In progress", "part"], ["not_due", none, "Not due yet", "none"],
+      ["ready", ready, "Ready to review", "ready"], ["approved", appr, "Approved", "appr"], ["overdue", late, "Overdue", "late"], ["open", oc, "Open comments", "kcm"]];
+    $("kpis").innerHTML = k.map(function (x) { return '<button type="button" class="kpi ' + x[3] + (x[0] && !x[1] ? " zero" : "") + '" data-kpi="' + x[0] + '" aria-pressed="' + (S.filters.state === x[0] && x[0] !== "" ? "true" : "false") + '"' + (x[0] ? ' title="Show only: ' + x[2].toLowerCase() + '"' : ' title="Show all course files"') + "><b>" + x[1] + "</b><span>" + x[2] + "</span></button>"; }).join("");
     var progs = {};
-    base.forEach(function (c) { var p = progs[c.programShort] = progs[c.programShort] || { ok: 0, part: 0, none: 0, n: 0, score: 0 }; var s = scan(c).state; p.n++; p.score += scan(c).score; if (s === "complete") p.ok++; else if (s === "in_progress") p.part++; else p.none++; });
-    var order = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
-    var keys = Object.keys(progs).sort(function (a, b) { return (order.indexOf(a) + 99) % 99 - (order.indexOf(b) + 99) % 99; });
+    base.forEach(function (c) { var p = progs[c.programShort] = progs[c.programShort] || { ok: 0, part: 0, none: 0, n: 0, appr: 0 }; var s = scan(c).state; p.n++; if (s === "complete") p.ok++; else if (s === "in_progress") p.part++; else p.none++; if ((c.review || {}).status === "approved") p.appr++; });
+    var keys = Object.keys(progs).sort(function (a, b) { return progRank(a) - progRank(b); });
     $("bars").innerHTML = keys.length ? keys.map(function (p) {
       var v = progs[p], w = function (x) { return (x / v.n * 100).toFixed(2) + "%"; };
-      return '<button type="button" class="barrow" data-prog="' + esc(p) + '" aria-pressed="' + (S.filters.prog === p) + '" title="' + v.ok + " complete, " + v.part + " in progress, " + v.none + ' not started"><span class="lab">' + esc(p) + '</span><span class="stack"><i class="s-ok" style="width:' + w(v.ok) + '"></i><i class="s-part" style="width:' + w(v.part) + '"></i></span><span class="pct">' + v.ok + "/" + v.n + "</span></button>";
+      return '<button type="button" class="barrow" data-prog="' + esc(p) + '" aria-pressed="' + (S.filters.prog === p) + '" title="' + v.ok + " complete, " + v.part + " in progress, " + v.none + " nothing uploaded yet, " + v.appr + ' approved"><span class="lab">' + esc(p) + '</span><span class="pct"><b>' + v.ok + "</b> / " + v.n + " complete" + (v.appr ? " · " + v.appr + " approved" : "") + '</span><span class="stack">' + (v.ok ? '<i class="s-ok" style="width:' + w(v.ok) + '"></i>' : "") + (v.part ? '<i class="s-part" style="width:' + w(v.part) + '"></i>' : "") + "</span></button>";
     }).join("") : '<p class="note">No course files yet.</p>';
+  }
+
+  /* ---------- render: due-date strip ---------- */
+  function renderDue() {
+    var box = $("dueStrip"), d = semDue(), base = semCourses().filter(function (c) { return S.scope !== "mine" || mine(c); });
+    var defs = [["A", "Term A"], ["B", "Term B"], ["F", "Full semester"]], cards = [];
+    defs.forEach(function (x) {
+      var date = d[x[0]]; if (!date) return;
+      var cs = base.filter(function (c) { return c.term === x[1]; }); if (!cs.length) return;
+      var left = cs.filter(function (c) { return scan(c).state !== "complete"; }).length, days = daysTo(date);
+      if (days < -30) return;
+      cards.push({ term: x[1], date: date, days: days, n: cs.length, left: left });
+    });
+    cards.sort(function (a, b) { return a.date.localeCompare(b.date); });
+    if (!cards.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML = cards.map(function (x) {
+      var dt = new Date(x.date + "T00:00:00"), cls = x.left === 0 ? "done" : x.days < 0 ? "late" : x.days <= 7 ? "soon" : "";
+      var when = x.left === 0 ? "All complete" : x.days < 0 ? Math.abs(x.days) + " day" + (Math.abs(x.days) === 1 ? "" : "s") + " overdue" : x.days === 0 ? "Due today" : x.days === 1 ? "Due tomorrow" : "In " + x.days + " days";
+      var on = S.filters.term === x.term && S.filters.state === (x.days < 0 ? "overdue" : "incomplete");
+      var line = x.left === 0 ? "All " + x.n + " course files are complete." : x.left + " of " + x.n + " course file" + (x.n === 1 ? "" : "s") + " not complete yet" + (x.days < 0 ? "" : ". Click to list them.");
+      return '<button type="button" class="due ' + cls + '" data-due="' + esc(x.term) + '" data-late="' + (x.days < 0 ? 1 : 0) + '" aria-pressed="' + on + '"' + (x.left === 0 ? " disabled" : "") + '><span class="cal"><i>' + dt.toLocaleDateString("en-GB", { month: "short" }) + "</i><b>" + dt.getDate() + '</b></span><span class="txt"><b>' + esc(x.term) + " due " + esc(fmtDate(x.date)) + "</b><span>" + esc(line) + '</span></span><span class="when">' + when + "</span></button>";
+    }).join("");
   }
 
   /* ---------- render: grid ---------- */
@@ -157,56 +209,113 @@
     return '<span class="dot ' + m[0] + '" title="' + esc(it ? it.note : "") + '">' + m[1] + "</span>";
   }
   function stateLabel(s) { return { complete: "Complete", in_progress: "In progress", not_started: "Not started", not_due: "Not due yet", overdue: "Overdue" }[s] || s; }
+  var RV_RANK = { revise: 0, pending: 1, approved: 2 };
+  function sortVal(c, key) {
+    if (key === "inst") return (c.instructor || "~").toLowerCase();
+    if (key === "term") return (c.term || "~") + "|" + (dueFor(c) || "9999");
+    if (key === "done") return scan(c).score;
+    if (key === "review") { var rv = (c.review || {}).status || "pending"; return isReady(c) ? -1 : RV_RANK[rv]; }
+    if (key === "cm") return openComments(c.id).length;
+    return (c.course + " " + (c.section || "")).toLowerCase();
+  }
+  function sorted(list) {
+    var k = S.sort.key, dir = S.sort.dir;
+    return list.slice().sort(function (a, b) {
+      var pa = progRank(a.programShort), pb = progRank(b.programShort); if (pa !== pb) return pa - pb;
+      if (a.programShort !== b.programShort) return String(a.programShort).localeCompare(String(b.programShort));
+      var va = sortVal(a, k), vb = sortVal(b, k), r = typeof va === "number" ? va - vb : String(va).localeCompare(String(vb));
+      if (!r) r = (a.course + a.section).localeCompare(b.course + b.section);
+      return r * dir;
+    });
+  }
+  function reviewHTML(c) {
+    var rv = (c.review || {}).status || "pending";
+    if (rv === "approved") return '<span class="state approved">✓ Approved</span>';
+    if (rv === "revise") return '<span class="state revise">Needs revision</span>' + (isReady(c) ? '<div class="csub">Now complete: recheck</div>' : "");
+    if (isReady(c)) return '<span class="state ready">Ready to review</span>';
+    return '<span class="state pending">Not reviewed</span>';
+  }
   function renderGrid() {
     var list = visible();
     var tb = $("rows");
+    Array.prototype.forEach.call(document.querySelectorAll(".grid th[data-sort]"), function (th) { th.setAttribute("aria-sort", th.dataset.sort === S.sort.key ? (S.sort.dir > 0 ? "ascending" : "descending") : "none"); th.querySelector(".arr").textContent = th.dataset.sort === S.sort.key && S.sort.dir < 0 ? "▼" : "▲"; });
+    S.order = [];
     if (!S.db) { tb.innerHTML = '<tr><td colspan="13" class="empty">Open this page in Claude while signed in to see the course files.</td></tr>'; return; }
     if (!semCourses().length) { tb.innerHTML = '<tr><td colspan="13" class="empty">No course files recorded for ' + esc(semLabel()) + " yet." + (S.isLead ? " Press <b>Scan SharePoint</b> to read the folders." : "") + "</td></tr>"; return; }
-    if (!list.length) { tb.innerHTML = '<tr><td colspan="13" class="empty">' + (S.scope === "mine" ? "No course files are linked to your email yet. Switch to <b>All</b> to browse." : "No course files match these filters.") + "</td></tr>"; return; }
-    var order = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
-    list.sort(function (a, b) { var pa = order.indexOf(a.programShort), pb = order.indexOf(b.programShort); if (pa !== pb) return pa - pb; return (a.course + a.section).localeCompare(b.course + b.section); });
-    var html = "", last = "";
-    list.forEach(function (c) {
-      if (c.programShort !== last) { last = c.programShort; html += '<tr class="prog"><td colspan="13">' + esc(last) + "</td></tr>"; }
-      var sc = scan(c), st = sc.state, rv = (c.review || {}).status || "pending", oc = openComments(c.id).length;
-      var items = {}; (sc.items || []).forEach(function (i) { items[i.k] = i; });
-      var cells = ""; for (var k = 1; k <= 7; k++) cells += '<td class="cell">' + cellHTML(items[k], st) + "</td>";
-      var col = st === "complete" ? "var(--ok)" : st === "in_progress" ? "var(--part)" : "var(--none)";
-      html += '<tr data-id="' + esc(c.id) + '" tabindex="0">' +
-        '<td><div class="ccode">' + esc(c.course) + '</div><div class="csub">' + esc(c.section && !c.instructor ? c.section : stateLabel(dstate(c))) + (isOverdue(c) && st !== "not_started" ? ' · <span class="state overdue">Overdue</span>' : "") + (st === "not_started" && dueFor(c) && !isOverdue(c) ? ' · due ' + esc(fmtDate(dueFor(c))) : "") + "</div></td>" +
-        "<td>" + (c.instructor ? esc(c.instructor) : '<span class="muted">Not set</span>') + "</td>" +
-        "<td>" + (c.term ? esc(c.term) : '<span class="muted">—</span>') + "</td>" + cells +
-        '<td><div class="ring" style="--p:' + sc.score + ";--c:" + col + '"><b>' + sc.score + "%</b></div></td>" +
-        '<td><span class="state ' + rv + '">' + ({ pending: "Not reviewed", approved: "Approved", revise: "Needs revision" }[rv]) + "</span></td>" +
-        "<td>" + (oc ? '<span class="cm">● ' + oc + " open</span>" : '<span class="muted">—</span>') + "</td></tr>";
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="13" class="empty">' + (S.scope === "mine" ? "No course files are linked to your email yet. Switch to <b>All</b> to browse." : "No course files match these filters. " + '<button class="btn small" type="button" id="btnClear2">Clear filters</button>') + "</td></tr>"; return; }
+    list = sorted(list);
+    var groups = [], gi = {};
+    list.forEach(function (c) { var g = gi[c.programShort]; if (!g) { g = gi[c.programShort] = { name: c.programShort, items: [] }; groups.push(g); } g.items.push(c); });
+    var html = "";
+    groups.forEach(function (g) {
+      var open = !S.collapsed[g.name], n = g.items.length, ok = 0, part = 0, ready = 0, late = 0;
+      g.items.forEach(function (c) { var s = scan(c).state; if (s === "complete") ok++; else if (s === "in_progress") part++; if (isReady(c)) ready++; if (isOverdue(c)) late++; });
+      html += '<tr class="prog"><td colspan="13"><button type="button" class="proghead" data-group="' + esc(g.name) + '" aria-expanded="' + open + '"><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span class="pn">' + esc(g.name) + '</span><span class="pc">' + ok + " / " + n + ' complete</span><span class="mini" aria-hidden="true"><i style="width:' + (ok / n * 100) + '%;background:var(--ok)"></i><i style="width:' + (part / n * 100) + '%;background:var(--part)"></i></span><span class="chips">' + (ready ? '<span class="state ready">' + ready + " ready to review</span>" : "") + (late ? '<span class="state overdue">' + late + " overdue</span>" : "") + "</span></button></td></tr>";
+      if (!open) return;
+      g.items.forEach(function (c) {
+        S.order.push(c.id);
+        var sc = scan(c), st = sc.state, oc = openComments(c.id).length, due = dueFor(c), late = isOverdue(c);
+        var items = {}; (sc.items || []).forEach(function (i) { items[i.k] = i; });
+        var cells = "", mcells = "";
+        if (st === "not_started") {
+          cells = '<td class="empty7" colspan="7"><span class="awaiting' + (late ? " late" : "") + '">' + (late ? "Nothing uploaded · overdue since " + esc(fmtDate(due)) : "Nothing uploaded yet") + "</span></td>";
+        } else {
+          for (var k = 1; k <= 7; k++) { var dh = cellHTML(items[k], st); cells += '<td class="cell">' + dh + "</td>"; mcells += dh; }
+          mcells = '<td class="cells-m">' + mcells + "</td>";
+        }
+        var col = st === "complete" ? "var(--ok)" : st === "in_progress" ? "var(--part)" : "var(--none)";
+        var code = splitCode(c.course);
+        var sub = st === "complete" ? '<span class="state complete">Complete</span>' : st === "in_progress" ? '<span class="state in_progress">In progress</span>' + (late ? '<span class="state overdue">Overdue</span>' : "") : "";
+        if (c.section && !c.instructor) sub = esc(c.section) + " " + sub;
+        html += '<tr data-id="' + esc(c.id) + '" tabindex="0"' + (S.open === c.id ? ' class="current"' : "") + ">" +
+          '<td class="c-course"><div class="ccode">' + esc(code.main) + "</div>" + (code.rest.length ? '<div class="cx">with ' + esc(code.rest.join(", ")) + "</div>" : "") + (sub ? '<div class="csub">' + sub + "</div>" : "") + "</td>" +
+          '<td class="c-inst">' + (c.instructor ? esc(c.instructor) : '<span class="muted">Not set</span>') + "</td>" +
+          '<td class="c-term">' + (c.term ? esc(c.term) : '<span class="muted">Term not set</span>') + (due ? "<small>due " + esc(fmtDate(due).replace(/ \d{4}$/, "")) + "</small>" : "") + "</td>" + cells + mcells +
+          '<td class="c-done">' + (sc.score ? '<div class="ring" style="--p:' + sc.score + ";--c:" + col + '" title="' + sc.score + '% done"><b>' + sc.score + "%</b></div>" : '<span class="zero">0%</span>') + "</td>" +
+          '<td class="c-rev">' + reviewHTML(c) + "</td>" +
+          '<td class="c-cm">' + (oc ? '<span class="cm">' + oc + " open</span>" : '<span class="muted">—</span>') + "</td></tr>";
+      });
     });
     tb.innerHTML = html;
   }
+  function filtersActive() { var f = S.filters; return !!(f.prog || f.term || f.state || f.inst || f.text.trim()); }
   function renderFilters() {
     var cs = semCourses();
-    var progs = Array.from(new Set(cs.map(function (c) { return c.programShort; }))).sort();
+    var progs = Array.from(new Set(cs.map(function (c) { return c.programShort; }))).sort(function (a, b) { return progRank(a) - progRank(b); });
     var insts = Array.from(new Set(cs.map(function (c) { return c.instructor; }).filter(Boolean))).sort();
     fillSelect($("fProg"), "All programs", progs, S.filters.prog);
     fillSelect($("fInst"), "All instructors", insts, S.filters.inst);
+    $("fTerm").value = S.filters.term; $("fState").value = S.filters.state;
+    if ($("fText").value !== S.filters.text) $("fText").value = S.filters.text;
+    $("btnClear").hidden = !filtersActive();
+    var base = cs.filter(function (c) { return S.scope !== "mine" || mine(c); }).length, shown = visible().length;
+    $("countLine").textContent = base ? (shown === base ? base + " course files" : "Showing " + shown + " of " + base) : "";
   }
+  function clearFilters() { S.filters = { prog: "", term: "", state: "", inst: "", text: "" }; renderAll(); }
   function fillSelect(el, first, vals, cur) { el.innerHTML = '<option value="">' + first + "</option>" + vals.map(function (v) { return "<option" + (v === cur ? " selected" : "") + ">" + esc(v) + "</option>"; }).join(""); }
   function renderHeader() {
     var so = semOptions(), ss = $("semSel"), cur = semKey();
     ss.innerHTML = so.map(function (o) { return '<option value="' + esc(o.k) + '"' + (o.k === cur ? " selected" : "") + ">" + esc(semLabelOf(o.k)) + (o.n ? " (" + o.n + ")" : "") + "</option>"; }).join("");
-    var ls = semLastScan();
-    $("scanLine").textContent = ls ? "Checked against SharePoint " + fmtDT(ls.at) : "Not scanned yet";
-    $("leadActions").hidden = !S.isLead;
+    var ls = semLastScan(), sl = $("scanLine");
+    sl.textContent = ls ? "Checked against SharePoint " + fmtDT(ls.at) : "Not scanned yet";
+    sl.classList.toggle("stale", !ls || (Date.now() - new Date(ls.at)) > 3 * 86400000);
+    $("leadActions").hidden = !S.isLead; $("scanBox").hidden = !S.isLead;
     var sp = $("scanProg"), cur = sp.value, pf = programFolders();
     if (sp.options.length !== pf.length + 1) { sp.innerHTML = '<option value="">All programs</option>' + pf.map(function (p) { return '<option value="' + esc(p) + '">' + esc(CF.programShort(p)) + "</option>"; }).join(""); sp.value = cur; }
     $("scopeSeg").hidden = !S.courses.some(mine);
     Array.prototype.forEach.call($("scopeSeg").querySelectorAll("button"), function (b) { b.setAttribute("aria-pressed", b.dataset.scope === S.scope); });
   }
-  function renderAll() { renderHeader(); renderFilters(); renderSummary(); renderGrid(); if (S.open && S.open !== "__new" && S.open !== "__panel") renderSheet(); if (S.open === "__panel" && S._panelIs === "rem") renderReminders(); }
+  function renderAll() { renderHeader(); renderFilters(); renderDue(); renderSummary(); renderGrid(); if (S.open && S.open !== "__new" && S.open !== "__panel") renderSheet(); if (S.open === "__panel" && S._panelIs === "rem") renderReminders(); }
 
   /* ---------- detail sheet ---------- */
   function course(id) { return S.courses.find(function (c) { return c.id === id; }); }
-  function openSheet(id) { S.open = id; $("sheet").hidden = false; $("scrim").hidden = false; renderSheet(); try { $("sheet").querySelector(".x").focus(); } catch (e) {} }
-  function closeSheet() { S.open = null; $("sheet").hidden = true; $("scrim").hidden = true; }
+  function markCurrent() { Array.prototype.forEach.call(document.querySelectorAll("#rows tr[data-id]"), function (r) { r.classList.toggle("current", r.dataset.id === S.open); }); }
+  function openSheet(id) { var was = S.open && S.open.indexOf("__") !== 0; S.open = id; $("sheet").hidden = false; $("scrim").hidden = false; renderSheet(); markCurrent(); try { if (!was) $("sheet").querySelector(".x").focus(); } catch (e) {} }
+  function closeSheet() { var id = S.open; S.open = null; $("sheet").hidden = true; $("scrim").hidden = true; markCurrent(); var r = id && document.querySelector('#rows tr[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); if (r) try { r.focus(); } catch (e) {} }
+  // Previous / next course file in the order the grid shows them.
+  function stepSheet(d) { var i = S.order.indexOf(S.open); if (i < 0) return; var j = i + d; if (j < 0 || j >= S.order.length) return; openSheet(S.order[j]); var r = document.querySelector('#rows tr[data-id="' + S.order[j] + '"]'); if (r && r.scrollIntoView) r.scrollIntoView({ block: "nearest" }); }
+  // Comments by the reviewer always show the reviewer's name from Settings (the signed-in account may be a shared one).
+  function authorName(m) { return m && m.role === "lead" ? (S.config.reviewerName || "Mousa Alhatti") : personName(m && m.by); }
   function personName(uid) { return (S.names[uid] && S.names[uid].name) || "Someone"; }
 
   function programFolders() {
@@ -240,27 +349,29 @@
     var issuesBySec = {}; cms.forEach(function (m) { if (m.kind === "issue" && m.status !== "resolved") issuesBySec[m.sec || 0] = (issuesBySec[m.sec || 0] || 0) + 1; });
     var lead = S.isLead;
     var termSel = lead ? '<select id="mTerm" aria-label="Term"><option value="">Term not set</option>' + TERMS.map(function (t) { return "<option" + (c.term === t ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" : esc(c.term || "Term not set");
-    var instEd = lead ? '<input id="mInst" value="' + esc(c.instructor || "") + '" placeholder="Instructor name" aria-label="Instructor" style="width:150px"> <input id="mEmail" value="' + esc(c.email || "") + '" placeholder="email@adu.ac.ae" aria-label="Instructor email" style="width:190px"> <label class="note" for="mStud">Students</label> <input id="mStud" type="number" min="0" value="' + esc(c.enrolled || "") + '" placeholder="?" style="width:64px"> <button class="btn small" type="button" id="mSave">Save</button>' : esc(c.instructor || "Instructor not set") + (c.email ? ' · <span class="copyable">' + esc(c.email) + "</span>" : "") + (c.enrolled ? " · " + esc(c.enrolled) + " students" : "");
+    var instEd = lead ? '<div class="edit-grid"><input id="mInst" value="' + esc(c.instructor || "") + '" placeholder="Instructor name" aria-label="Instructor"><input id="mEmail" value="' + esc(c.email || "") + '" placeholder="email@adu.ac.ae" aria-label="Instructor email"><input id="mStud" type="number" min="0" value="' + esc(c.enrolled || "") + '" placeholder="Students" aria-label="Students" title="Students enrolled"><button class="btn small" type="button" id="mSave">Save</button></div>' : '<div class="meta">' + esc(c.instructor || "Instructor not set") + (c.email ? ' · <span class="copyable">' + esc(c.email) + "</span>" : "") + (c.enrolled ? " · " + esc(c.enrolled) + " students" : "") + "</div>";
+    var pos = S.order.indexOf(c.id), code = splitCode(c.course);
+    var nav = pos >= 0 ? '<button class="navb" type="button" id="sPrev" aria-label="Previous course file" title="Previous (↑)"' + (pos === 0 ? " disabled" : "") + '><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><span class="pos">' + (pos + 1) + " / " + S.order.length + '</span><button class="navb" type="button" id="sNext" aria-label="Next course file" title="Next (↓)"' + (pos === S.order.length - 1 ? " disabled" : "") + '><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>' : "";
 
-    var h = '<div class="sheet-head"><div class="row"><div style="display:grid;gap:4px;min-width:0"><span class="eyebrow">' + esc(c.programShort) + '</span><h2 id="dTitle" style="font-size:1.3rem"><span class="ccode" style="font-size:1rem">' + esc(c.course) + "</span>" + (c.section ? ' <span class="muted" style="font-weight:500;font-size:.9rem">· ' + esc(c.section) + "</span>" : "") + '</h2></div><button class="x" type="button" aria-label="Close">×</button></div>' +
-      '<div class="meta">' + instEd + "</div>" +
-      '<div class="meta"><span>' + termSel + "</span>" + (dueFor(c) ? "<span>Due " + fmtDate(dueFor(c)) + "</span>" : "") + '<span class="state ' + dstate(c) + '">' + stateLabel(dstate(c)) + " · " + sc.score + '%</span><a href="' + esc(folderUrl(c.path)) + '" target="_blank" rel="noopener">Open folder in SharePoint ↗</a>' + (lead ? '<button class="btn small" type="button" id="btnRescan">Rescan this course file</button><button class="btn small" type="button" id="btnExpCourse">Export…</button>' : "") + "</div></div>";
+    var h = '<div class="sheet-head"><div class="row"><div style="display:grid;gap:3px;min-width:0"><span class="eyebrow">' + esc(c.programShort) + '</span><h2 id="dTitle" style="font-size:1.3rem">' + esc(code.main) + (c.section ? ' <span class="muted" style="font-weight:500;font-size:.88rem">· ' + esc(c.section) + "</span>" : "") + "</h2>" + (code.rest.length ? '<span class="cx">Cross-listed with ' + esc(code.rest.join(", ")) + "</span>" : "") + '</div><div class="nav">' + nav + '<button class="x" type="button" aria-label="Close" title="Close (Esc)">×</button></div></div>' +
+      '<div class="meta"><span class="state ' + dstate(c) + '">' + stateLabel(dstate(c)) + " · " + sc.score + "%</span>" + reviewHTML(c) + "<span>" + termSel + "</span>" + (dueFor(c) ? "<span>Due " + fmtDate(dueFor(c)) + "</span>" : "") + '<a href="' + esc(folderUrl(c.path)) + '" target="_blank" rel="noopener">Open folder in SharePoint ↗</a></div>' +
+      (lead ? '<div class="editrow">' + instEd + '<span class="acts"><button class="btn small" type="button" id="btnRescan">Rescan</button><button class="btn small" type="button" id="btnExpCourse">Export…</button></span></div>' : instEd) + "</div>";
 
     h += '<div class="sheet-body">';
     if (c.scanNote) h += '<div class="banner warn">' + esc(c.scanNote) + "</div>";
     // review decision
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Reviewer decision</h3>' +
-      (lead ? '<div class="decide"><button type="button" class="btn ap" data-review="approved" aria-pressed="' + (rv === "approved") + '">✓ Approve course file</button><button type="button" class="btn rv" data-review="revise" aria-pressed="' + (rv === "revise") + '">Needs revision</button><button type="button" class="btn" data-review="pending" aria-pressed="' + (rv === "pending") + '">Not reviewed</button></div>' : '<div><span class="state ' + rv + '">' + ({ pending: "Not reviewed yet", approved: "Approved", revise: "Needs revision" }[rv]) + "</span></div>") +
+    h += '<section><h3>Reviewer decision</h3>' +
+      (lead ? '<div class="decide"><button type="button" class="btn ap" data-review="approved" aria-pressed="' + (rv === "approved") + '">✓ Approve</button><button type="button" class="btn rv" data-review="revise" aria-pressed="' + (rv === "revise") + '">Needs revision</button><button type="button" class="btn" data-review="pending" aria-pressed="' + (rv === "pending") + '">Not reviewed</button></div>' : '<div><span class="state ' + rv + '">' + ({ pending: "Not reviewed yet", approved: "Approved", revise: "Needs revision" }[rv]) + "</span></div>") +
       ((c.review || {}).at ? '<span class="note">Updated ' + fmtDT(c.review.at) + "</span>" : "") + "</section>";
     // Department rules
     var nd = need(c);
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Department rules</h3><div class="checks" style="padding:12px 14px;display:grid;gap:6px;font-size:.86rem">' +
+    h += '<section><h3>Department rules</h3><div class="checks" style="padding:12px 14px;display:grid;gap:6px;font-size:.86rem">' +
       "<div>Graded samples required: <b>" + nd + " High, " + nd + " Medium, " + nd + " Low</b> per assessment " + (c.enrolled ? "(class of " + esc(c.enrolled) + ")" : '<span class="muted">(class size not recorded, so the minimum of 1 is applied)</span>') + "</div>" +
       "<div>Syllabus must state the section and campus" + (sc.syllabus ? (sc.syllabus.read ? " · " + esc(sc.syllabus.file || "") + ": campus " + (sc.syllabus.campus ? "✓" : "✕") + ", section " + (sc.syllabus.section ? "✓" : "✕") + ", office hours " + (sc.syllabus.office ? "✓" : "✕") + ", faculty name " + (sc.syllabus.faculty ? "✓" : "✕") : " · the current syllabus could not be read") : ' <span class="muted">(checked at the next scan)</span>') + "</div>" +
       (c.emailedAt ? "<div>Instructor emailed " + fmtDT(c.emailedAt) + "</div>" : "") + "</div></section>";
 
     // checklist
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Checklist against the model course file</h3><div class="checks">';
+    h += '<section><h3>Checklist against the model course file</h3><div class="checks">';
     CF.SECTIONS.forEach(function (s) {
       var it = items[s.k];
       var cls = sc.state === "not_started" ? "none" : (it ? it.s : "miss");
@@ -273,7 +384,7 @@
 
     // assessments
     if ((sc.assessments || []).length) {
-      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Assessment evidence</h3><div style="overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px"><table class="amx"><thead><tr><th>Assessment</th><th>Instrument</th><th>Key / rubric</th><th>High</th><th>Medium</th><th>Low</th></tr></thead><tbody>';
+      h += '<section><h3>Assessment evidence</h3><div style="overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px"><table class="amx"><thead><tr><th>Assessment</th><th>Instrument</th><th>Key / rubric</th><th>High</th><th>Medium</th><th>Low</th></tr></thead><tbody>';
       sc.assessments.forEach(function (a) {
         var yn = function (b) { return b ? '<span class="yes">✓</span>' : '<span class="no">✕</span>'; };
         var nn = function (n) { return n ? '<span class="yes">✓</span>' : '<span class="no">✕</span>'; };
@@ -283,12 +394,15 @@
     }
 
     // auto issues
+    if ((sc.notes || []).length) {
+      h += '<section><h3>Notes <span class="note" style="font-weight:400">(accepted, no action needed)</span></h3><ul class="issues" style="color:var(--muted)">' + sc.notes.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></section>";
+    }
     if ((sc.issues || []).length) {
-      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Found by the automatic check</h3><ul class="issues">' + sc.issues.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></section>";
+      h += '<section><h3>Found by the automatic check</h3><ul class="issues">' + sc.issues.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></section>";
     }
 
     // comments
-    h += '<section style="display:grid;gap:10px"><h3 style="font-size:.95rem">Review comments</h3><div class="thread">';
+    h += '<section><h3>Review comments</h3><div class="thread">';
     var roots = cms.filter(function (m) { return !m.parent; });
     if (!roots.length) h += '<p class="note">No comments yet.</p>';
     roots.forEach(function (m) {
@@ -297,14 +411,14 @@
     });
     h += "</div>";
     if (S.db) {
-      h += '<div class="composer"><div class="row"><label for="cSec" class="note">About</label><select id="cSec"><option value="0">Whole course file</option>' + CF.SECTIONS.map(function (s) { return '<option value="' + s.k + '">' + s.k + ". " + esc(s.short) + "</option>"; }).join("") + '</select></div><textarea id="cText" placeholder="' + (lead ? "Write a comment or issue for the instructor…" : "Write a note to the reviewer…") + '"></textarea><div class="row"><button class="btn primary" type="button" id="cPost">' + (lead ? "Add comment" : "Send note") + "</button></div></div>";
+      h += '<div class="composer">' + (lead ? '<div class="row"><label for="cPreset" class="note">Quick comment</label><select id="cPreset"><option value="">Choose a ready-made comment…</option>' + PRESETS.map(function (p) { return '<option value="' + p.id + '">' + esc((p.accept ? "Accepted: " : p.note ? "Note: " : "Issue: ") + p.text.replace(/ (Accepted as correct; no action needed\.|Please |Optional, for clarity: )/, " ").slice(0, 80)) + "…</option>"; }).join("") + "</select></div>" : "") + '<div class="row"><label for="cSec" class="note">About</label><select id="cSec"><option value="0">Whole course file</option>' + CF.SECTIONS.map(function (s) { return '<option value="' + s.k + '">' + s.k + ". " + esc(s.short) + "</option>"; }).join("") + '</select></div><textarea id="cText" placeholder="' + (lead ? "Write a comment or issue for the instructor…" : "Write a note to the reviewer…") + '"></textarea><div class="row"><button class="btn primary" type="button" id="cPost">' + (lead ? "Add comment" : "Send note") + "</button></div></div>";
     }
     h += "</section>";
 
     // email
     if (lead) {
       var mail = buildEmail(c);
-      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Email the instructor</h3><div class="composer">' +
+      h += '<section><h3>Email the instructor</h3><div class="composer">' +
         '<input id="eTo" value="' + esc(c.email || "") + '" placeholder="instructor@adu.ac.ae" aria-label="To">' +
         '<input id="eCc" value="" placeholder="Cc (optional)" aria-label="Cc">' +
         '<input id="eSubj" value="' + esc(mail.subject) + '" aria-label="Subject">' +
@@ -313,7 +427,7 @@
         '<span class="note">Outlook opens a new message with this text in your browser. Check it and press Send there.</span></div></section>';
     }
     if (lead) {
-      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Course details</h3><div class="settings-grid">' +
+      h += '<section><h3>Course details</h3><div class="settings-grid">' +
         '<label for="dCourse">Course name' + inp("dCourse", c.course) + "</label>" +
         '<label for="dSection">Section / folder label' + inp("dSection", c.section) + "</label>" +
         '<label for="dProg">Program<select id="dProg">' + programFolders().map(function (p) { return "<option" + (p === c.program ? " selected" : "") + ">" + esc(p) + "</option>"; }).join("") + "</select></label></div>" +
@@ -337,7 +451,7 @@
     }
     if (!isReply && S.db) acts += '<button class="btn small" type="button" data-reply="' + m.id + '">Reply</button>';
     if ((lead || mineC)) acts += '<button class="btn small" type="button" data-cdel="' + m.id + '">Delete</button>';
-    return '<div class="cmt' + (isReply ? " reply" : "") + '"><div class="h"><b>' + esc(personName(m.by)) + "</b><span>" + (m.role === "lead" ? "Reviewer" : "Instructor") + "</span><span>" + fmtDT(m.at) + "</span>" + (isReply ? "" : "<span>" + sec + "</span>") + st + '</div><div class="t">' + esc(m.text) + "</div>" + (acts ? '<div class="acts">' + acts + "</div>" : "") + '<div class="replybox" data-for="' + m.id + '" hidden></div></div>';
+    return '<div class="cmt' + (isReply ? " reply" : "") + '"><div class="h"><b>' + esc(authorName(m)) + "</b><span>" + (m.role === "lead" ? "Reviewer" : "Instructor") + "</span><span>" + fmtDT(m.at) + "</span>" + (isReply ? "" : "<span>" + sec + "</span>") + st + '</div><div class="t">' + esc(m.text) + "</div>" + (acts ? '<div class="acts">' + acts + "</div>" : "") + '<div class="replybox" data-for="' + m.id + '" hidden></div></div>';
   }
 
   function salute(name) { name = (name || "").trim(); if (!name) return "Dear colleague,"; if (/^dr\.?\s/i.test(name)) return "Dear Dr. " + name.replace(/^dr\.?\s+/i, "").split(/\s+/)[0] + ","; return "Dear Dr. " + name.split(/\s+/)[0] + ","; }
@@ -358,7 +472,10 @@
     if (oc.length) { lines.push("", "Reviewer comments:"); oc.forEach(function (m) { lines.push("- " + (m.sec ? CF.SECTIONS[m.sec - 1].short + ": " : "") + m.text); }); }
     if (sc.state === "complete" && !oc.length) lines.push("", "All seven sections are in place. Thank you.");
     var nd = need(c);
-    lines.push("", "Reminder: please upload " + nd + " High, " + nd + " Medium and " + nd + " Low graded sample" + (nd > 1 ? "s" : "") + " for each assessment, and make sure the syllabus states the section and campus.");
+    var rem = [];
+    if (sampleShort(c)) rem.push("upload " + nd + " High, " + nd + " Medium and " + nd + " Low graded sample" + (nd > 1 ? "s" : "") + " for each assessment (files can keep the student's name)");
+    if (syllabusShort(c) && !(c.accepted && c.accepted[2])) rem.push("make sure the syllabus states the section and campus");
+    if (rem.length) lines.push("", "Reminder: please " + rem.join(", and ") + ".");
     lines.push("", "Course file folder: " + folderUrl(c.path));
     if (S.config.link) lines.push("You can see the full review and reply to comments here: " + S.config.link);
     return { subject: "Course file review: " + c.course + " (" + sem + ")", body: lines.join("\n") };
@@ -371,8 +488,9 @@
 
   /* ---------- writes ---------- */
   function upd(id, data) { return S.db.collection("courses").doc(id).update(data).catch(function (e) { toast("Could not save: " + (e && e.message || e)); throw e; }); }
-  function addComment(c, sec, text, parent) {
-    var doc = { courseId: c.id, sec: +sec || 0, text: text, by: S.me, role: S.isLead ? "lead" : "instructor", at: nowISO(), kind: parent ? "reply" : (S.isLead ? "issue" : "note"), status: parent ? "" : (S.isLead ? "open" : ""), parent: parent || "" };
+  function addComment(c, sec, text, parent, kindOverride) {
+    var kind = parent ? "reply" : (kindOverride || (S.isLead ? "issue" : "note"));
+    var doc = { courseId: c.id, sec: +sec || 0, text: text, by: S.me, role: S.isLead ? "lead" : "instructor", at: nowISO(), kind: kind, status: kind === "issue" ? "open" : "", parent: parent || "" };
     return S.db.collection("comments").add(doc).then(function () { toast(S.isLead ? "Comment added" : "Note sent"); }).catch(function (e) { toast(e && e.code === "not_granted" ? "You need permission to comment. Ask the reviewer to share with 'can use'." : "Could not post the comment."); });
   }
 
@@ -609,9 +727,15 @@
 
   /* ---------- events ---------- */
   document.addEventListener("click", function (ev) {
-    var t = ev.target.closest("button, a, tr[data-id]"); if (!t) return;
+    var t = ev.target.closest("button, a, tr[data-id], th[data-sort]"); if (!t) return;
     if (t.matches("tr[data-id]")) return openSheet(t.dataset.id);
-    if (t.dataset.kpi !== undefined) { S.filters.state = S.filters.state === t.dataset.kpi ? "" : t.dataset.kpi; $("fState").value = S.filters.state; return renderAll(); }
+    if (t.matches("th[data-sort]")) { var sk = t.dataset.sort; S.sort = S.sort.key === sk ? { key: sk, dir: -S.sort.dir } : { key: sk, dir: sk === "done" || sk === "cm" ? -1 : 1 }; return renderGrid(); }
+    if (t.dataset.group) { S.collapsed[t.dataset.group] = !S.collapsed[t.dataset.group]; try { localStorage.setItem("folio-collapsed", JSON.stringify(S.collapsed)); } catch (e) {} return renderGrid(); }
+    if (t.dataset.due) { var late = t.dataset.late === "1", stv = late ? "overdue" : "incomplete", on = S.filters.term === t.dataset.due && S.filters.state === stv; S.filters.term = on ? "" : t.dataset.due; S.filters.state = on ? "" : stv; if (!on) { S.collapsed = {}; } return renderAll(); }
+    if (t.id === "btnClear" || t.id === "btnClear2") return clearFilters();
+    if (t.id === "sPrev") return stepSheet(-1);
+    if (t.id === "sNext") return stepSheet(1);
+    if (t.dataset.kpi !== undefined) { S.filters.state = t.dataset.kpi === "" ? "" : (S.filters.state === t.dataset.kpi ? "" : t.dataset.kpi); if (t.dataset.kpi === "") { S.filters.prog = ""; S.filters.term = ""; } return renderAll(); }
     if (t.dataset.prog !== undefined) { S.filters.prog = S.filters.prog === t.dataset.prog ? "" : t.dataset.prog; return renderAll(); }
     if (t.dataset.scope) { S.scope = t.dataset.scope; return renderAll(); }
     if (t.id === "btnScan") return scanSharePoint({ prog: $("scanProg").value, full: $("scanFull").checked });
@@ -651,7 +775,16 @@
       return;
     }
     if (t.dataset.addc) { var sel = $("cSec"); if (sel) { sel.value = t.dataset.addc; $("cText").focus(); } return; }
-    if (t.id === "cPost") { var tx = $("cText").value.trim(); if (!tx) return; addComment(c, $("cSec").value, tx).then(function () { var el = $("cText"); if (el) el.value = ""; }); return; }
+    if (t.id === "cPost") {
+      var tx = $("cText").value.trim(); if (!tx) return;
+      var pr = S._preset && S._preset.text === tx ? S._preset : null, secv = $("cSec").value;
+      addComment(c, secv, tx, null, pr && (pr.accept || pr.note) ? "note" : null).then(function () {
+        var el = $("cText"); if (el) el.value = ""; var ps = $("cPreset"); if (ps) ps.value = "";
+        if (pr && pr.accept && +secv) { var accs = Object.assign({}, c.accepted || {}); accs[secv] = { at: nowISO(), by: S.me, why: pr.id }; upd(c.id, { accepted: accs }).then(function () { toast("Comment added and item " + secv + " accepted as done"); }); }
+        S._preset = null;
+      });
+      return;
+    }
     if (t.dataset.cstat) { S.db.collection("comments").doc(t.dataset.cid).update({ status: t.dataset.cstat, statusAt: nowISO(), statusBy: S.me }).then(function () { toast(t.dataset.cstat === "fixed" ? "Reviewer will recheck this item" : "Updated"); }).catch(function () { toast("Could not update the comment."); }); return; }
     if (t.dataset.cdel) {
       if (t.dataset.confirm !== "1") { t.dataset.confirm = "1"; t.textContent = "Confirm delete"; return; }
@@ -671,12 +804,18 @@
     if (t.id === "eMark") { var to = $("eTo").value.trim(); upd(c.id, { emailedAt: nowISO(), email: to || c.email || "" }).then(function () { toast("Recorded as emailed"); }); return; }
   });
   document.addEventListener("keydown", function (ev) {
-    if (ev.key === "Escape" && S.open) closeSheet();
-    if (ev.key === "Enter" && ev.target.matches && ev.target.matches("tr[data-id]")) openSheet(ev.target.dataset.id);
+    var typing = ev.target.matches && ev.target.matches("input, textarea, select, [contenteditable]");
+    if (ev.key === "Escape" && S.open) { if (typing && ev.target.value) return; closeSheet(); return; }
+    if (ev.key === "Enter" && ev.target.matches && ev.target.matches("tr[data-id]")) { openSheet(ev.target.dataset.id); return; }
+    if (typing || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    if ((ev.key === "ArrowDown" || ev.key === "ArrowUp") && S.open && S.open.indexOf("__") !== 0) { ev.preventDefault(); stepSheet(ev.key === "ArrowDown" ? 1 : -1); return; }
+    if ((ev.key === "ArrowDown" || ev.key === "ArrowUp") && !S.open && ev.target.matches && ev.target.matches("tr[data-id]")) {
+      ev.preventDefault(); var rs = Array.prototype.slice.call(document.querySelectorAll("#rows tr[data-id]")), ri = rs.indexOf(ev.target), nx = rs[ri + (ev.key === "ArrowDown" ? 1 : -1)]; if (nx) nx.focus();
+    }
   });
   document.addEventListener("input", function (ev) {
     if (["eTo", "eCc", "eSubj", "eBody"].indexOf(ev.target.id) >= 0) syncOutlook();
-    if (ev.target.id === "fText") { S.filters.text = ev.target.value; renderSummary(); renderGrid(); }
+    if (ev.target.id === "fText") { S.filters.text = ev.target.value; renderGrid(); $("btnClear").hidden = !filtersActive(); var b0 = semCourses().filter(function (c) { return S.scope !== "mine" || mine(c); }).length, v0 = visible().length; $("countLine").textContent = v0 === b0 ? b0 + " course files" : "Showing " + v0 + " of " + b0; }
   });
   document.addEventListener("change", function (ev) {
     var id = ev.target.id;
@@ -690,6 +829,7 @@
     else if (id === "fInst") S.filters.inst = ev.target.value;
     else if (ev.target.dataset && ev.target.dataset.remf) { S.remF[ev.target.dataset.remf] = ev.target.checked; renderReminders(); return; }
     else if (id === "impFile") { if (ev.target.files[0]) { $("settingsPanel").hidden = true; importSchedule(ev.target.files[0]); ev.target.value = ""; } return; }
+    else if (id === "cPreset") { var pp = PRESETS.filter(function (p) { return p.id === ev.target.value; })[0]; S._preset = pp || null; if (pp) { $("cText").value = pp.text; if (pp.sec) $("cSec").value = String(pp.sec); } return; }
     else if (id === "mTerm") { var c = course(S.open); if (c) upd(c.id, { term: ev.target.value }).then(function () { toast("Term saved"); }); return; }
     else return;
     renderAll();
@@ -815,9 +955,9 @@
       L.push("• " + c.course + (c.section && !/,/.test(c.section) ? " (" + c.section + ")" : "") + " — " + stateLabel(dstate(c)) + (dueFor(c) ? ", due " + fmtDate(dueFor(c)) : "") + (sc.state !== "not_started" ? ", " + sc.score + "% complete" : ""));
       if (sc.state === "not_started") L.push("   The folder is still empty.");
       else (sc.items || []).filter(function (i) { return i.s !== "ok"; }).forEach(function (i) { L.push("   - " + i.k + ". " + CF.SECTIONS[i.k - 1].short + ": " + i.note); });
-      L.push("   Graded samples needed: " + nd + " High, " + nd + " Medium, " + nd + " Low per assessment. Folder: " + folderUrl(c.path), "");
+      L.push((sampleShort(c) ? "   Graded samples needed: " + nd + " High, " + nd + " Medium, " + nd + " Low per assessment. " : "   ") + "Folder: " + folderUrl(c.path), "");
     });
-    L.push("Please also make sure each syllabus states the section and campus.");
+    if (g.files.some(function (c) { return syllabusShort(c) && !(c.accepted && c.accepted[2]); })) L.push("Please also make sure each syllabus states the section and campus.");
     if (S.config.link) L.push("You can follow your course file status here: " + S.config.link);
     return L.join("\n");
   }
@@ -904,7 +1044,7 @@
   function renderImport() {
     S._panelIs = "imp";
     var I = S._imp, h = '<p class="note" style="margin:0">' + esc(I.file) + ": " + I.n + " Education class lines read and compared with Folio.</p>";
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Updates to apply (' + I.updates.length + ")</h3>";
+    h += '<section><h3>Updates to apply (' + I.updates.length + ")</h3>";
     if (!I.updates.length) h += '<p class="note">Class sizes, terms and campuses already match the schedule.</p>';
     else {
       h += '<div style="overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px"><table class="amx"><thead><tr><th></th><th>Course file</th><th>Students</th><th>Term</th><th>Campus</th></tr></thead><tbody>' + I.updates.map(function (u, i) {
@@ -913,10 +1053,10 @@
       }).join("") + '</tbody></table></div><div class="actions"><button class="btn primary" type="button" id="impApply">Apply selected updates</button></div>';
     }
     h += "</section>";
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">On the schedule but no course file in Folio (' + I.missing.length + ")</h3>";
+    h += '<section><h3>On the schedule but no course file in Folio (' + I.missing.length + ")</h3>";
     h += I.missing.length ? I.missing.map(function (m, i) { return '<div class="cmt"><div class="h"><b>' + esc(m.code) + "</b><span>" + esc(m.name) + "</span><span>" + esc(Object.keys(m.camps).join(", ")) + " · " + m.enr + " student" + (m.enr === 1 ? "" : "s") + '</span></div><div class="acts"><button class="btn small" type="button" data-impadd="' + i + '">Add course file…</button></div></div>'; }).join("") : '<p class="note">None.</p>';
     h += '<p class="note" style="margin:0">A course may also be missing because its SharePoint folder uses a different code or instructor name. Check the folder before adding.</p></section>';
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">In Folio but not on the schedule (' + I.notOn.length + ")</h3>";
+    h += '<section><h3>In Folio but not on the schedule (' + I.notOn.length + ")</h3>";
     h += I.notOn.length ? I.notOn.map(function (c) { return '<div class="cmt"><div class="h"><b>' + esc(c.course) + "</b><span>" + esc(c.instructor || c.section || "") + '</span></div><div class="acts"><button class="btn small" type="button" data-impopen="' + esc(c.id) + '">Open</button></div></div>'; }).join("") : '<p class="note">None.</p>';
     h += "</section>";
     sheetModal("Schedule check", "Import schedule", h);

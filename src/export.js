@@ -334,12 +334,13 @@
           sc.assessments.map(function (a) { return [{ t: a.name, bold: true }, yn(a.ins), yn(a.key), cnt(a.h), cnt(a.m), cnt(a.l)]; }));
       }
       if ((sc.issues || []).length) { heading("Found by the automatic check"); sc.issues.forEach(function (x) { para("•  " + x, 9, F.r, C.ink, 4); }); gap(6); }
+      if ((sc.notes || []).length) { heading("Notes (accepted, no action needed)"); sc.notes.forEach(function (x) { para("•  " + x, 9, F.r, C.muted, 4); }); gap(6); }
       if (m.opts.comments) {
         var cms = m.comments(c);
         heading("Review comments");
         if (!cms.length) para("No comments recorded.", 9, F.i, C.muted);
         else table([{ h: "Date", w: 56 }, { h: "Folder", w: 72 }, { h: "From", w: 78 }, { h: "Status", w: 66 }, { h: "Comment", w: CW - 272 }], cms.map(function (x) {
-          return [fmtDate((x.at || "").slice(0, 10)), x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", personName(x.by) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), x.kind === "issue" && !x.parent ? { t: { open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "", pill: { open: "miss", fixed: "part", resolved: "ok" }[x.status] || "none" } : "", x.text || ""];
+          return [fmtDate((x.at || "").slice(0, 10)), x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", authorName(x) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), x.kind === "issue" && !x.parent ? { t: { open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "", pill: { open: "miss", fixed: "part", resolved: "ok" }[x.status] || "none" } : "", x.text || ""];
         }));
       }
     });
@@ -508,13 +509,13 @@
     if (m.opts.comments) {
       var co = new XSheet("Comments"); co.cols = [30, 24, 13, 18, 24, 14, 80]; co.freeze = 1;
       co.row(["Course file", "Instructor", "Date", "Folder", "From", "Status", "Comment"].map(function (h) { return { v: h, s: XS.head }; }), 22);
-      m.files.forEach(function (c) { m.comments(c).forEach(function (x) { var stw = x.kind === "issue" && !x.parent ? ({ open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "") : ""; co.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: fmtDate((x.at || "").slice(0, 10)), s: XS.center }, { v: x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", s: XS.body }, { v: personName(x.by) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), s: XS.body }, stw ? stCell(stw, { Open: "miss", "Says fixed": "part", Resolved: "ok" }[stw]) : { v: "", s: XS.center }, { v: x.text || "", s: XS.body }]); }); });
+      m.files.forEach(function (c) { m.comments(c).forEach(function (x) { var stw = x.kind === "issue" && !x.parent ? ({ open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "") : ""; co.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: fmtDate((x.at || "").slice(0, 10)), s: XS.center }, { v: x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", s: XS.body }, { v: authorName(x) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), s: XS.body }, stw ? stCell(stw, { Open: "miss", "Says fixed": "part", Resolved: "ok" }[stw]) : { v: "", s: XS.center }, { v: x.text || "", s: XS.body }]); }); });
       if (co.rows.length === 1) co.row([{ v: "No comments recorded.", s: XS.body }]);
       sheets.push(co);
     }
     var fd = new XSheet("Findings"); fd.cols = [30, 24, 100]; fd.freeze = 1;
     fd.row(["Course file", "Instructor", "Found by the automatic check"].map(function (h) { return { v: h, s: XS.head }; }), 22);
-    m.files.forEach(function (c) { (scan(c).issues || []).forEach(function (x) { fd.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: x, s: XS.body }]); }); });
+    m.files.forEach(function (c) { (scan(c).issues || []).forEach(function (x) { fd.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: x, s: XS.body }]); }); (scan(c).notes || []).forEach(function (x) { fd.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: "Note (accepted, no action needed): " + x, s: XS.body }]); }); });
     if (fd.rows.length === 1) fd.row([{ v: "Nothing found.", s: XS.body }]);
     sheets.push(fd);
     return writeXLSX(sheets, { title: m.kicker + " — " + m.title, author: m.reviewer });

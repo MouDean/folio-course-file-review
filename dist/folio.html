@@ -14,151 +14,286 @@
 })();
 </script>
 <style>
-/* Layout: one working screen — summary band (KPIs + program bars), filter bar, a course × 7-folder status grid; detail opens in a side sheet. */
+/* Folio v2 layout: header (brand + semester + scan), action toolbar, due-date strip, summary band (KPI tiles + program progress),
+   filter bar, a course x 7-folder grid grouped by program (collapsible, sortable). Detail opens in a side sheet. Cards on phones. */
 :root{
-  --bg:#F3F5F4; --surface:#FFFFFF; --sunk:#E9EDEB; --ink:#18201E; --muted:#5B6763; --line:#D7DDDA;
-  --accent:#8A1C3F; --accent-ink:#FFFFFF; --accent-soft:#F4E3E9;
-  --ok:#2F7D50; --ok-soft:#DDF0E4; --part:#B7790A; --part-soft:#FBEFD3; --miss:#BF3B2A; --miss-soft:#F9E0DB; --none:#9AA4A0; --none-soft:#ECEFEE;
+  --bg:#F4F5F3; --surface:#FFFFFF; --raised:#FBFBFA; --sunk:#ECEEEB; --ink:#17201D; --ink-2:#36423E; --muted:#5A6662; --line:#DCE0DD; --line-strong:#C5CBC7;
+  --accent:#8A1C3F; --accent-hover:#741634; --accent-ink:#FFFFFF; --accent-soft:#F6E6EC; --accent-line:#E5BFCC;
+  --ok:#276F45; --ok-soft:#E0F1E6; --part:#8C5A00; --part-soft:#FBF0D6; --miss:#B93725; --miss-soft:#FAE3DE; --none:#78827E; --none-soft:#EEF0EE;
   --display:"Archivo","Segoe UI",system-ui,sans-serif; --body:"Public Sans","Segoe UI",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
-  --shadow:0 10px 30px rgba(20,30,26,.14); color-scheme:light;
+  --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px;
+  --shadow-sm:0 1px 2px rgba(20,30,26,.06); --shadow:0 16px 40px rgba(20,30,26,.16); color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#111514; --surface:#191F1D; --sunk:#222927; --ink:#E6ECEA; --muted:#9AA7A2; --line:#2E3734;
-  --accent:#E2789A; --accent-ink:#1A0B11; --accent-soft:#3A1E28;
-  --ok:#5CC487; --ok-soft:#173226; --part:#E5B24A; --part-soft:#3A2E12; --miss:#F07A66; --miss-soft:#3D1F1A; --none:#66726D; --none-soft:#242B29;
-  --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}}
+  --bg:#0F1312; --surface:#171D1B; --raised:#1C2321; --sunk:#232B28; --ink:#E7ECEA; --ink-2:#C9D2CE; --muted:#9BA8A3; --line:#2B3431; --line-strong:#3A4541;
+  --accent:#E27D9D; --accent-hover:#EC97B2; --accent-ink:#1A0B11; --accent-soft:#38202A; --accent-line:#5C3343;
+  --ok:#5DC488; --ok-soft:#163026; --part:#E6B450; --part-soft:#372C12; --miss:#F27F6B; --miss-soft:#3B1F1A; --none:#6E7A75; --none-soft:#212826;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow:0 16px 40px rgba(0,0,0,.55); color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#111514; --surface:#191F1D; --sunk:#222927; --ink:#E6ECEA; --muted:#9AA7A2; --line:#2E3734;
-  --accent:#E2789A; --accent-ink:#1A0B11; --accent-soft:#3A1E28;
-  --ok:#5CC487; --ok-soft:#173226; --part:#E5B24A; --part-soft:#3A2E12; --miss:#F07A66; --miss-soft:#3D1F1A; --none:#66726D; --none-soft:#242B29;
-  --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}
+  --bg:#0F1312; --surface:#171D1B; --raised:#1C2321; --sunk:#232B28; --ink:#E7ECEA; --ink-2:#C9D2CE; --muted:#9BA8A3; --line:#2B3431; --line-strong:#3A4541;
+  --accent:#E27D9D; --accent-hover:#EC97B2; --accent-ink:#1A0B11; --accent-soft:#38202A; --accent-line:#5C3343;
+  --ok:#5DC488; --ok-soft:#163026; --part:#E6B450; --part-soft:#372C12; --miss:#F27F6B; --miss-soft:#3B1F1A; --none:#6E7A75; --none-soft:#212826;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow:0 16px 40px rgba(0,0,0,.55); color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-.decide .btn.expseg[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
-option,optgroup{background:var(--surface);color:var(--ink)}
-.theme{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:2px;gap:2px}
-.theme button{border:0;background:transparent;border-radius:6px;padding:5px 9px;font-weight:600;font-size:.82rem;color:var(--muted)}
-.theme button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+html{-webkit-text-size-adjust:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
-.wrap{max-width:1280px;margin:0 auto;display:grid;gap:18px}
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.wrap>*{min-width:0}
 h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
 h1{font-size:1.55rem;font-weight:700}
-h2{font-size:1.05rem;font-weight:600}
-.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+h2{font-size:1rem;font-weight:600}
+h3{font-size:.92rem;font-weight:600}
+.eyebrow{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
 .mono{font-family:var(--mono);font-size:.86em}
 .muted{color:var(--muted)}
+.note{font-size:.8rem;color:var(--muted)}
 button,select,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
-.btn:hover{border-color:var(--muted)}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-.btn.small{padding:4px 9px;font-size:.82rem}
-.btn:disabled{opacity:.5;cursor:default}
-a{color:var(--accent)}
+a{color:var(--accent);text-underline-offset:2px}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+option,optgroup{background:var(--surface);color:var(--ink)}
+select,input,textarea{accent-color:var(--accent)}
 
-header.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
-.title-block{display:grid;gap:4px}
-.brand{display:flex;align-items:center;gap:12px}
-.brand svg{width:44px;height:44px;flex:none}
-.brand h1{font-size:1.9rem;letter-spacing:-.02em;line-height:1}
-.brand .tag{font-size:.82rem;color:var(--muted);font-weight:500}
-.logo-back{fill:var(--accent)} .logo-page{fill:var(--surface);stroke:var(--accent);stroke-width:3} .logo-front{fill:var(--accent)} .logo-inner{fill:var(--surface)} .logo-check{fill:none;stroke:var(--ok);stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
-.sem{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}
-.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:.78rem;font-weight:600;background:var(--sunk);color:var(--muted)}
-.pill.accent{background:var(--accent-soft);color:var(--accent)}
-.semsel{border:0;border-radius:999px;padding:3px 8px;font-size:.8rem;font-weight:700;background:var(--accent-soft);color:var(--accent);cursor:pointer}
-.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.scanline{font-size:.8rem;color:var(--muted)}
+/* buttons */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:7px 12px;font-weight:600;font-size:.86rem;display:inline-flex;align-items:center;gap:6px;
+  color:var(--ink);text-decoration:none;line-height:1.2;white-space:nowrap;transition:border-color .15s,background .15s}
+.btn:hover{border-color:var(--line-strong);background:var(--raised)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--sunk)}
+.btn.small{padding:4px 9px;font-size:.8rem}
+.btn.danger{color:var(--miss);border-color:var(--miss)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn svg,.ico{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.btn.small svg{width:14px;height:14px}
 
-.banner{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+/* header */
+header.top{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.brand svg{width:46px;height:46px;flex:none}
+.brand h1{font-size:1.85rem;letter-spacing:-.025em;line-height:1}
+.brand-text{display:grid;gap:5px;min-width:0}
+.brand-line{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.brand .tag{font-size:.86rem;color:var(--muted);font-weight:500}
+.logo-page{fill:var(--surface);stroke:var(--accent);stroke-width:3} .logo-front{fill:var(--accent)} .logo-inner{fill:var(--surface)} .logo-check{fill:none;stroke:var(--ok);stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+.sem{display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap}
+.semsel{border:1px solid var(--accent-line);border-radius:999px;padding:4px 10px;font-size:.82rem;font-weight:700;background:var(--accent-soft);color:var(--accent);cursor:pointer}
+.scanline{font-size:.8rem;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+.scanline::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.scanline.stale::before{background:var(--part)}
+.scanbox{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:var(--r-lg);padding:4px 4px 4px 4px;background:var(--surface);box-shadow:var(--shadow-sm);max-width:100%}
+.scanbox select{border:0;background:transparent;font-weight:600;font-size:.86rem;max-width:200px;min-width:0;padding:5px 4px}
+.scanbox label{display:inline-flex;gap:5px;align-items:center;padding:0 8px;border-left:1px solid var(--line);font-size:.8rem;color:var(--muted);font-weight:600;align-self:stretch}
+
+/* toolbar */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;padding:6px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-sm)}
+.toolbar .grp{display:flex;flex-wrap:wrap;gap:2px;align-items:center}
+.toolbar .sep{width:1px;height:22px;background:var(--line);margin:0 6px}
+.theme{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-md);background:var(--sunk);padding:2px;gap:2px}
+.theme button{border:0;background:transparent;border-radius:6px;padding:4px 9px;font-weight:600;font-size:.78rem;color:var(--muted)}
+.theme button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
+
+/* banners + due strip */
+.banner{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-lg);padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .banner.warn{border-color:var(--part);background:var(--part-soft)}
 .banner.err{border-color:var(--miss);background:var(--miss-soft)}
 .progress{height:6px;background:var(--sunk);border-radius:6px;overflow:hidden;flex:1 1 160px}
 .progress>i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.duestrip{display:flex;flex-wrap:wrap;gap:8px}
+.due{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-lg);padding:8px 10px 8px 12px;text-align:left;flex:1 1 280px;min-width:0;box-shadow:var(--shadow-sm)}
+.due:hover{border-color:var(--line-strong)}
+.due .cal{flex:none;width:44px;border-radius:8px;overflow:hidden;text-align:center;border:1px solid var(--line);background:var(--raised)}
+.due .cal i{display:block;font-style:normal;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--accent);color:var(--accent-ink);padding:1px 0}
+.due .cal b{display:block;font-family:var(--display);font-size:1.1rem;line-height:1.5}
+.due .txt{display:grid;gap:1px;min-width:0;flex:1}
+.due .txt b{font-size:.88rem}
+.due .txt span{font-size:.8rem;color:var(--muted)}
+.due .when{flex:none;font-size:.76rem;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--sunk);color:var(--muted)}
+.due.soon .when{background:var(--part-soft);color:var(--part)}
+.due.late{border-color:var(--miss)} .due.late .when{background:var(--miss);color:var(--surface)} .due.late .cal i{background:var(--miss)}
+.due.done .when{background:var(--ok-soft);color:var(--ok)}
+.due[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:-1px}
 
-.summary{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px}
-@media (max-width:860px){.summary{grid-template-columns:1fr}}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:14px;min-width:0;align-content:start}
-.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
-@media (max-width:560px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.kpi{border-radius:10px;padding:10px 12px;background:var(--sunk);display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:2px;border:0;text-align:left}
-.kpi b{font-family:var(--display);font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
-.kpi span{font-size:.78rem;color:var(--muted);font-weight:600;line-height:1.2}
-.grid td:nth-child(3){white-space:nowrap}
-.kpi.ok b{color:var(--ok)} .kpi.part b{color:var(--part)} .kpi.none b{color:var(--muted)} .kpi.kcm b{color:var(--accent)} .kpi.late b{color:var(--miss)}
-.kpi[aria-pressed="true"]{outline:2px solid var(--accent)}
-.bars{display:grid;gap:10px}
-.barrow{display:grid;grid-template-columns:minmax(0,230px) minmax(0,1fr) 48px;gap:10px;align-items:center;border:0;background:none;padding:2px 0;text-align:left}
-.barrow .lab{font-weight:600;font-size:.85rem;line-height:1.25}
-.barrow .pct{font-variant-numeric:tabular-nums;font-size:.82rem;color:var(--muted);text-align:right}
-.stack{display:flex;height:16px;border-radius:5px;overflow:hidden;background:var(--none-soft)}
+/* summary */
+.summary{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:stretch}
+@media (max-width:920px){.summary{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);padding:16px;display:grid;gap:14px;min-width:0;align-content:start;box-shadow:var(--shadow-sm)}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{border-radius:var(--r-lg);padding:10px 12px;background:var(--raised);display:grid;gap:2px;border:1px solid var(--line);text-align:left;position:relative;min-width:0}
+.kpi:hover{border-color:var(--line-strong)}
+.kpi b{font-family:var(--display);font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi span{font-size:.76rem;color:var(--muted);font-weight:600;line-height:1.25}
+.kpi::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:transparent}
+.kpi.ok b{color:var(--ok)} .kpi.ok::after{background:var(--ok)}
+.kpi.part b{color:var(--part)} .kpi.part::after{background:var(--part)}
+.kpi.none b{color:var(--muted)}
+.kpi.late b{color:var(--miss)} .kpi.late::after{background:var(--miss)}
+.kpi.kcm b,.kpi.ready b{color:var(--accent)} .kpi.ready::after{background:var(--accent)}
+.kpi.appr b{color:var(--ok)}
+.kpi.zero b{color:var(--muted);opacity:.7} .kpi.zero::after{background:transparent}
+.kpi[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-soft)}
+.bars{display:grid;gap:12px}
+.barrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;align-items:center;border:0;background:none;padding:6px 8px;margin:-6px -8px;text-align:left;border-radius:var(--r-md)}
+.barrow:hover{background:var(--sunk)}
+.barrow .lab{font-weight:600;font-size:.86rem;line-height:1.25}
+.barrow .pct{font-variant-numeric:tabular-nums;font-size:.8rem;color:var(--muted);text-align:right;white-space:nowrap}
+.barrow .pct b{color:var(--ink);font-weight:700}
+.barrow .stack{grid-column:1/-1}
+.stack{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--none-soft);gap:2px}
 .stack i{display:block;height:100%}
-.stack .s-ok{background:var(--ok)} .stack .s-part{background:var(--part)} .stack .s-none{background:var(--none-soft)}
-.barrow[aria-pressed="true"] .lab{color:var(--accent)}
-@media (max-width:560px){.barrow{grid-template-columns:minmax(0,1fr) 40px}.barrow .stack{grid-column:1/-1;grid-row:2}}
-.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--muted)}
+.stack .s-ok{background:var(--ok)} .stack .s-part{background:var(--part)} .stack .s-appr{background:var(--ok)}
+.barrow[aria-pressed="true"]{background:var(--accent-soft)} .barrow[aria-pressed="true"] .lab{color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.76rem;color:var(--muted);align-items:center}
 .legend span{display:inline-flex;gap:6px;align-items:center}
 .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
 
+/* filters */
 .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.filters select,.filters input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 9px}
-.filters input{flex:1 1 200px;min-width:0}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
-.seg button{border:0;background:none;padding:6px 11px;font-weight:600;color:var(--muted)}
+.filters select,.filters input{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:7px 10px;font-size:.86rem;min-width:0}
+.filters select{max-width:220px}
+.filters .search{flex:1 1 220px;min-width:0;position:relative;display:flex}
+.filters .search input{width:100%;padding-left:32px}
+.filters .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--muted);fill:none;stroke-width:2;stroke-linecap:round}
+.count{font-size:.8rem;color:var(--muted);white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:6px 11px;font-weight:600;color:var(--muted);font-size:.84rem}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 
-.gridwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
-table.grid{border-collapse:collapse;width:100%;min-width:900px}
-.grid th,.grid td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
-.grid thead th{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;background:var(--surface);position:sticky;top:0}
-.grid th.sec{text-align:center;width:46px;padding-inline:2px}
-.grid th.sec small{display:block;text-transform:none;letter-spacing:0;font-size:.68rem}
-.grid tbody tr{cursor:pointer}
-.grid tbody tr:hover{background:var(--sunk)}
-.grid tbody tr.prog td{background:var(--bg);font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);cursor:default;padding-block:6px}
-.ccode{font-weight:600;font-size:.9rem;font-variant-numeric:tabular-nums}
-.csub{font-size:.78rem;color:var(--muted)}
+/* grid */
+.gridwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);box-shadow:var(--shadow-sm)}
+table.grid{border-collapse:separate;border-spacing:0;width:100%;min-width:980px}
+.grid th,.grid td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+.grid thead th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;background:var(--surface);position:sticky;top:0;z-index:1;padding-block:10px;white-space:nowrap}
+.grid thead th:first-child{border-top-left-radius:var(--r-xl)} .grid thead th:last-child{border-top-right-radius:var(--r-xl)}
+.grid th.sortable{cursor:pointer;user-select:none}
+.grid th.sortable:hover{color:var(--ink)}
+.grid th .arr{display:inline-block;width:10px;margin-left:3px;opacity:.35}
+.grid th[aria-sort="ascending"] .arr,.grid th[aria-sort="descending"] .arr{opacity:1;color:var(--accent)}
+.grid th.sec{text-align:center;width:44px;padding-inline:2px}
+.grid th.sec small{display:block;text-transform:none;letter-spacing:0;font-size:.64rem;font-weight:500;margin-top:1px}
+.grid tbody tr[data-id]{cursor:pointer}
+.grid tbody tr[data-id]:hover td{background:var(--raised)}
+.grid tbody tr[data-id]:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.grid tbody tr[data-id].current td{background:var(--accent-soft)}
+.grid tbody tr:last-child td{border-bottom:0}
+.grid tr.prog td{background:var(--sunk);cursor:pointer;padding:0}
+.proghead{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:9px 12px;text-align:left;flex-wrap:wrap}
+.proghead .chev{width:16px;height:16px;transition:transform .15s;stroke:var(--muted);fill:none;stroke-width:2;flex:none}
+.proghead[aria-expanded="false"] .chev{transform:rotate(-90deg)}
+.proghead .pn{font-family:var(--display);font-weight:700;font-size:.88rem}
+.proghead .pc{font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.proghead .mini{width:120px;height:6px;border-radius:3px;background:var(--surface);overflow:hidden;display:flex}
+.proghead .mini i{display:block;height:100%}
+.proghead .chips{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.ccode{font-weight:600;font-size:.9rem;font-variant-numeric:tabular-nums;line-height:1.3}
+.cx{font-size:.74rem;color:var(--muted);line-height:1.3;margin-top:1px}
+.csub{font-size:.76rem;color:var(--muted);margin-top:2px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.c-course{min-width:220px;max-width:320px}
+.c-inst{min-width:140px}
+.c-term{white-space:nowrap}
+.c-term small{display:block;font-size:.74rem;color:var(--muted)}
 td.cell{text-align:center;padding-inline:2px}
-.dot{width:24px;height:24px;border-radius:6px;display:inline-grid;place-items:center;font-size:.8rem;font-weight:700}
+td.empty7{text-align:center;padding-inline:8px}
+.awaiting{display:flex;align-items:center;justify-content:center;gap:8px;height:24px;border-radius:6px;border:1px dashed var(--line-strong);color:var(--muted);font-size:.76rem;font-weight:500;background:repeating-linear-gradient(135deg,transparent 0 6px,var(--none-soft) 6px 7px)}
+.awaiting.late{border-color:var(--miss);color:var(--miss);background:var(--miss-soft)}
+.dot{width:24px;height:24px;border-radius:6px;display:inline-grid;place-items:center;font-size:.78rem;font-weight:700;line-height:1}
 .dot.ok{background:var(--ok);color:var(--surface)}
 .dot.part{background:var(--part-soft);color:var(--part);box-shadow:inset 0 0 0 2px var(--part)}
 .dot.miss{background:var(--miss-soft);color:var(--miss);box-shadow:inset 0 0 0 1.5px var(--miss)}
 .dot.none{background:var(--none-soft);color:var(--none)}
+.dot.sm{width:16px;height:16px;font-size:.6rem;border-radius:4px}
 .ring{--p:0;width:38px;height:38px;border-radius:50%;background:conic-gradient(var(--c,var(--accent)) calc(var(--p)*1%),var(--sunk) 0);display:grid;place-items:center}
-.ring b{width:28px;height:28px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:.68rem;font-variant-numeric:tabular-nums}
-.state{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:600;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.ring b{width:29px;height:29px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:.66rem;font-variant-numeric:tabular-nums}
+.zero{color:var(--muted);font-size:.8rem;font-variant-numeric:tabular-nums}
+.state{display:inline-flex;align-items:center;gap:5px;font-size:.74rem;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap;line-height:1.5}
 .state.complete{background:var(--ok-soft);color:var(--ok)} .state.in_progress{background:var(--part-soft);color:var(--part)} .state.not_started,.state.not_due{background:var(--none-soft);color:var(--muted)}
-.state.approved{background:var(--ok);color:var(--surface)} .state.revise{background:var(--miss-soft);color:var(--miss)} .state.pending{background:var(--sunk);color:var(--muted)}
+.state.approved{background:var(--ok);color:var(--surface)} .state.revise{background:var(--miss-soft);color:var(--miss)} .state.pending{background:transparent;color:var(--muted);padding-inline:0;font-weight:500}
+.state.ready{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent-line)}
 .state.overdue{background:var(--miss);color:var(--surface)}
-.cm{display:inline-flex;gap:4px;align-items:center;font-weight:600;color:var(--accent);font-size:.82rem}
-.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+.cm{display:inline-flex;gap:5px;align-items:center;font-weight:600;color:var(--accent);font-size:.8rem;white-space:nowrap}
+.cm::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.empty{padding:44px 16px;text-align:center;color:var(--muted)}
+.gridfoot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;align-items:center}
+details.how{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 14px}
+details.how summary{cursor:pointer;font-weight:600;font-size:.86rem}
+details.how p{margin:8px 0 0;font-size:.84rem;color:var(--muted)}
+kbd{font-family:var(--mono);font-size:.72rem;border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--raised);color:var(--ink-2)}
+
+/* phone: rows become cards */
+@media (max-width:760px){
+  .gridwrap{background:transparent;border:0;box-shadow:none;overflow:visible}
+  table.grid{min-width:0;display:block}
+  .grid thead{display:none}
+  .grid tbody{display:grid;gap:8px}
+  .grid tr.prog{display:block;margin-top:6px} .grid tr.prog td{display:block;border-radius:var(--r-md);border:0}
+  .grid tbody tr[data-id]{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"course done" "inst inst" "cells cells" "rev cm";gap:6px 10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px}
+  .grid tbody tr[data-id] td{display:block;border:0;padding:0;background:transparent!important}
+  .grid .c-course{grid-area:course;min-width:0;max-width:none}
+  .grid .c-inst{grid-area:inst;min-width:0;font-size:.84rem;color:var(--ink-2)}
+  .grid .c-term{display:none!important}
+  .grid .c-done{grid-area:done}
+  .grid .c-rev{grid-area:rev}
+  .grid .c-cm{grid-area:cm;text-align:right}
+  .grid .c-cm .muted{display:none}
+  .grid td.cell{display:none!important}
+  .grid .cells-m{grid-area:cells;display:flex!important;gap:4px;flex-wrap:wrap}
+  .grid td.empty7{grid-area:cells}
+  .proghead .mini{display:none}
+  .toolbar .sep{display:none}
+  .scanbox{width:100%} .scanbox select{flex:1}
+  .brand .eyebrow{font-size:.62rem}
+  .due .txt span{display:none}
+}
+@media (min-width:761px){.grid .cells-m{display:none}}
 
 /* sheet */
-.scrim{position:fixed;inset:0;background:rgba(10,16,14,.38);z-index:20}
-.sheet{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:var(--bg);z-index:21;box-shadow:var(--shadow);display:flex;flex-direction:column;
-  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
-.sheet-head{background:var(--surface);border-bottom:1px solid var(--line);padding:14px 18px;display:grid;gap:8px}
-.sheet-body{overflow-y:auto;padding:16px 18px 40px;display:grid;gap:16px;align-content:start}
+.scrim{position:fixed;inset:0;background:rgba(10,16,14,.42);z-index:20;backdrop-filter:blur(1px)}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--bg);z-index:21;box-shadow:var(--shadow);display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px);animation:slide .18s ease-out}
+@keyframes slide{from{transform:translateX(24px);opacity:.6}to{transform:none;opacity:1}}
+.sheet-head{background:var(--surface);border-bottom:1px solid var(--line);padding:14px 20px 12px;display:grid;gap:10px}
+.sheet-body{overflow-y:auto;overflow-x:hidden;padding:18px 20px 48px;display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-content:start}
+.sheet-body>*,.sheet-head>*{min-width:0}
+.sheet-body section,.sheet-body section>*,.composer>*,.composer .row>*{min-width:0}
+.sheet-body section{display:grid;gap:8px;grid-template-columns:minmax(0,1fr)}
+.sheet-body section>h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-family:var(--body);font-weight:700}
+.sheet select,.sheet input,.sheet textarea{max-width:100%}
+.composer .row>select{flex:1 1 200px;min-width:0}
+.composer .row>label{flex:none}
+.cmt .t{overflow-wrap:anywhere}
 .sheet-head .row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
-.x{border:0;background:var(--sunk);border-radius:8px;width:34px;height:34px;font-size:1.1rem;flex:none}
-.meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.84rem;color:var(--muted);align-items:center}
-.meta select,.meta input{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 6px;font-size:.84rem}
-.checks{display:grid;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.sheet-head .row .nav{display:flex;gap:4px;align-items:center;flex:none}
+.sheet-head .pos{font-size:.76rem;color:var(--muted);font-variant-numeric:tabular-nums;padding:0 4px}
+.x,.navb{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);width:34px;height:34px;font-size:1.05rem;flex:none;display:grid;place-items:center;color:var(--ink-2)}
+.x:hover,.navb:hover{background:var(--sunk)}
+.navb:disabled{opacity:.4;cursor:default}
+.navb svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.meta{display:flex;flex-wrap:wrap;gap:8px 12px;font-size:.84rem;color:var(--muted);align-items:center}
+.meta select,.meta input{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:4px 7px;font-size:.84rem}
+.meta .acts{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.editrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.editrow .edit-grid{flex:1 1 420px;min-width:0}
+.editrow .acts{display:flex;gap:6px;flex-wrap:wrap}
+.checks{display:grid;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
 .ck{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:start}
 .ck:last-child{border-bottom:0}
-.ck h3{font-size:.92rem;font-weight:600}
-.ck p{margin:2px 0 0;font-size:.84rem;color:var(--muted)}
+.ck h3{font-size:.9rem;font-weight:600;font-family:var(--body);text-transform:none;letter-spacing:0;color:var(--ink)}
+.ck p{margin:2px 0 0;font-size:.83rem;color:var(--muted)}
 .ck .cmc{font-size:.76rem}
 .amx{width:100%;border-collapse:collapse;font-size:.84rem}
-.amx th,.amx td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:center}
+.amx th,.amx td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:center}
+.amx tr:last-child td{border-bottom:0}
 .amx th:first-child,.amx td:first-child{text-align:left}
-.amx thead th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.amx thead th{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .yes{color:var(--ok);font-weight:700} .no{color:var(--miss);font-weight:700}
 .issues{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.86rem}
 .thread{display:grid;gap:10px}
-.cmt{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:6px}
+.cmt{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 12px;display:grid;gap:6px}
 .cmt.reply{margin-left:22px;border-style:dashed}
 .cmt .h{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:.78rem;color:var(--muted)}
 .cmt .h b{color:var(--ink)}
@@ -166,69 +301,77 @@ td.cell{text-align:center;padding-inline:2px}
 .cmt .acts{display:flex;gap:6px;flex-wrap:wrap}
 .st-open{color:var(--miss)} .st-fixed{color:var(--part)} .st-resolved{color:var(--ok)}
 .composer{display:grid;gap:8px}
-.composer textarea,.composer input,.composer select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;width:100%}
+.composer textarea,.composer input,.composer select{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:8px 10px;width:100%}
 .composer textarea{min-height:84px;resize:vertical}
 .composer .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .composer .row select{width:auto}
-.decide{display:flex;gap:8px;flex-wrap:wrap}
-.decide .btn[aria-pressed="true"]{background:var(--sunk);border-color:var(--muted)}
-.decide .btn[aria-pressed="true"].ap{background:var(--ok);border-color:var(--ok);color:var(--surface)}
-.decide .btn[aria-pressed="true"].rv{background:var(--miss);border-color:var(--miss);color:var(--surface)}
-.note{font-size:.8rem;color:var(--muted)}
+.decide{display:inline-flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--surface);justify-self:start}
+.decide .btn{border:0;border-radius:0;border-right:1px solid var(--line)}
+.decide .btn:last-child{border-right:0}
+.decide .btn[aria-pressed="true"]{background:var(--sunk)}
+.decide .btn[aria-pressed="true"].ap{background:var(--ok);color:var(--surface)}
+.decide .btn[aria-pressed="true"].rv{background:var(--miss);color:var(--surface)}
+.decide .btn.expseg[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
 .copyable{user-select:all;font-family:var(--mono);font-size:.82rem;background:var(--sunk);border-radius:6px;padding:2px 6px}
-.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
-.settings-grid label{display:grid;gap:4px;font-size:.8rem;color:var(--muted);font-weight:600}
-.settings-grid input,.settings-grid select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 9px;color:var(--ink);font-weight:400}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.settings-grid label{display:grid;gap:4px;font-size:.78rem;color:var(--muted);font-weight:600}
+.settings-grid input,.settings-grid select,.field{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:7px 9px;color:var(--ink);font-weight:400;width:100%;min-width:0}
 .tabs{justify-self:start}
 .tabs button{padding:8px 14px}
 .ctable input{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 7px;margin:2px;width:170px}
 .sheet .settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.settings-grid select,.settings-grid input{width:100%;min-width:0}
-@media (max-width:520px){.sheet .settings-grid{grid-template-columns:1fr}}
-.scanbox{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:3px 3px 3px 6px;background:var(--surface)}
-.scanbox select{border:0;background:transparent;font-weight:600;max-width:180px}
-.scanbox label{display:inline-flex;gap:4px;align-items:center}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:9px;z-index:40;font-weight:600;font-size:.86rem}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.edit-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1.5fr) 84px auto;gap:6px;align-items:center}
+.edit-grid input{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-sm);padding:5px 8px;font-size:.84rem;width:100%;min-width:0}
+@media (max-width:560px){.sheet .settings-grid,.edit-grid{grid-template-columns:1fr}.meta .acts{margin-left:0}}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:10px;z-index:40;font-weight:600;font-size:.86rem;box-shadow:var(--shadow)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
 <div class="wrap">
   <header class="top">
-    <div class="title-block">
-      <span class="eyebrow">College of Arts, Education and Social Sciences · Department of Education</span>
-      <div class="brand">
-        <svg viewBox="0 0 64 64" aria-hidden="true">
-          <path class="logo-page" d="M14 6h22l10 10v24H14z"/>
-          <path class="logo-page" d="M9 11h22l10 10v24H9z"/>
-          <path class="logo-front" d="M4 18h18v12h22c3 0 5 2 5 5v20c0 3-2 5-5 5H9c-3 0-5-2-5-5z"/>
-          <path class="logo-inner" d="M14 30h28v22H14z"/>
-          <path class="logo-check" d="M19 41l6 6 12-12"/>
-        </svg>
-        <div style="display:grid;gap:2px"><h1>Folio</h1><span class="tag">Course file review</span></div>
+    <div class="brand">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path class="logo-page" d="M14 6h22l10 10v24H14z"/>
+        <path class="logo-page" d="M9 11h22l10 10v24H9z"/>
+        <path class="logo-front" d="M4 18h18v12h22c3 0 5 2 5 5v20c0 3-2 5-5 5H9c-3 0-5-2-5-5z"/>
+        <path class="logo-inner" d="M14 30h28v22H14z"/>
+        <path class="logo-check" d="M19 41l6 6 12-12"/>
+      </svg>
+      <div class="brand-text">
+        <span class="eyebrow">College of Arts, Education and Social Sciences · Department of Education</span>
+        <div class="brand-line"><h1>Folio</h1><span class="tag">Course file review</span></div>
+        <div class="sem"><select id="semSel" class="semsel" aria-label="Semester" title="Switch semester"><option>Fall 2026–27</option></select><span class="scanline" id="scanLine">Waiting for data…</span></div>
       </div>
-      <div class="sem"><select id="semSel" class="semsel" aria-label="Semester" title="Switch semester"><option>Fall 2026–27</option></select><span class="scanline" id="scanLine">Waiting for data…</span></div>
     </div>
-    <div class="actions" id="leadActions" hidden>
-      <button class="btn" id="btnAdd" type="button">+ Add course file</button>
-      <button class="btn" id="btnRemind" type="button">Email reminders</button>
-      <button class="btn" id="btnReport" type="button">Download report</button>
-      <button class="btn" id="btnExport" type="button">Export…</button>
-      <span class="theme" role="group" aria-label="Theme"><button type="button" data-th="auto" title="Follow your device setting">Auto</button><button type="button" data-th="light">Light</button><button type="button" data-th="dark">Dark</button></span>
-      <button class="btn" id="btnSettings" type="button">Settings</button>
-      <span class="scanbox"><select id="scanProg" aria-label="Programs to scan"><option value="">All programs</option></select><label class="note" title="Re-read every folder, including unchanged and approved course files"><input type="checkbox" id="scanFull"> Full</label><button class="btn primary" id="btnScan" type="button">Scan SharePoint</button></span>
-    </div>
+    <span class="scanbox" id="scanBox" hidden><select id="scanProg" aria-label="Programs to scan"><option value="">All programs</option></select><label title="Re-read every folder, including unchanged and approved course files"><input type="checkbox" id="scanFull"> Full</label><button class="btn primary" id="btnScan" type="button"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Scan SharePoint</button></span>
   </header>
 
+  <nav class="toolbar" id="leadActions" hidden aria-label="Actions">
+    <div class="grp">
+      <button class="btn ghost" id="btnAdd" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add course file</button>
+      <button class="btn ghost" id="btnRemind" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>Email reminders</button>
+      <span class="sep" aria-hidden="true"></span>
+      <button class="btn ghost" id="btnReport" type="button"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 21h14"/></svg>Download report</button>
+      <button class="btn ghost" id="btnExport" type="button"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>Export PDF / Excel…</button>
+    </div>
+    <div class="grp" style="gap:8px">
+      <span class="theme" role="group" aria-label="Theme"><button type="button" data-th="auto" title="Follow your device setting">Auto</button><button type="button" data-th="light">Light</button><button type="button" data-th="dark">Dark</button></span>
+      <button class="btn ghost" id="btnSettings" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+    </div>
+  </nav>
+
   <div id="banner" class="banner" hidden></div>
+  <div id="dueStrip" class="duestrip" hidden aria-label="Due dates"></div>
 
   <section class="summary" aria-label="Summary">
     <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2 id="sumTitle">Department overview</h2><span class="note" id="sumNote"></span></div>
+      <div class="panel-head"><h2 id="sumTitle">Department overview</h2><span class="note" id="sumNote"></span></div>
       <div class="kpis" id="kpis"></div>
     </div>
     <div class="panel">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><h2>Progress by program <span class="note" style="font-weight:400;font-family:var(--body)">complete / total</span></h2>
-        <div class="legend"><span><i class="sw" style="background:var(--ok)"></i>Complete</span><span><i class="sw" style="background:var(--part)"></i>In progress</span><span><i class="sw" style="background:var(--none-soft);box-shadow:inset 0 0 0 1px var(--line)"></i>Not due yet / overdue</span></div></div>
+      <div class="panel-head"><h2>Progress by program</h2>
+        <div class="legend"><span><i class="sw" style="background:var(--ok)"></i>Complete</span><span><i class="sw" style="background:var(--part)"></i>In progress</span><span><i class="sw" style="background:var(--none-soft);box-shadow:inset 0 0 0 1px var(--line-strong)"></i>Nothing yet</span></div></div>
       <div class="bars" id="bars"></div>
     </div>
   </section>
@@ -261,25 +404,21 @@ td.cell{text-align:center;padding-inline:2px}
 
   <div class="filters" role="search">
     <div class="seg" id="scopeSeg" hidden><button type="button" data-scope="mine" aria-pressed="true">My course files</button><button type="button" data-scope="all" aria-pressed="false">All</button></div>
+    <span class="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="fText" type="search" placeholder="Search course or instructor" aria-label="Search"></span>
     <select id="fProg" aria-label="Program"><option value="">All programs</option></select>
     <select id="fTerm" aria-label="Term"><option value="">All terms</option><option>Term A</option><option>Term B</option><option>Full semester</option><option value="-">Term not set</option></select>
-    <select id="fState" aria-label="Status"><option value="">Any status</option><option value="complete">Complete</option><option value="in_progress">In progress</option><option value="not_due">Not due yet</option><option value="overdue">Overdue</option><option value="open">Has open comments</option><option value="revise">Needs revision</option><option value="approved">Approved</option></select>
+    <select id="fState" aria-label="Status"><option value="">Any status</option><option value="complete">Complete</option><option value="in_progress">In progress</option><option value="incomplete">Not complete yet</option><option value="not_due">Not due yet</option><option value="overdue">Overdue</option><option value="ready">Ready to review</option><option value="open">Has open comments</option><option value="revise">Needs revision</option><option value="approved">Approved</option></select>
     <select id="fInst" aria-label="Instructor"><option value="">All instructors</option></select>
-    <input id="fText" type="search" placeholder="Search course or instructor" aria-label="Search">
-  </div>
-
-  <div class="legend" aria-label="Legend">
-    <span><i class="dot ok" style="width:16px;height:16px;font-size:.6rem">✓</i>Meets the model course file</span>
-    <span><i class="dot part" style="width:16px;height:16px;font-size:.6rem">!</i>Partly there</span>
-    <span><i class="dot miss" style="width:16px;height:16px;font-size:.6rem">✕</i>Missing</span>
-    <span><i class="dot none" style="width:16px;height:16px;font-size:.6rem">·</i>Not uploaded yet</span>
-    <span>Columns 1–7 follow the course file checklist.</span>
+    <button class="btn small ghost" id="btnClear" type="button" hidden>Clear filters</button>
+    <span class="count" id="countLine" aria-live="polite"></span>
   </div>
 
   <div class="gridwrap">
     <table class="grid">
       <thead><tr>
-        <th>Course</th><th>Instructor</th><th>Term</th>
+        <th class="sortable" data-sort="course" aria-sort="ascending">Course<span class="arr">▲</span></th>
+        <th class="sortable" data-sort="inst">Instructor<span class="arr">▲</span></th>
+        <th class="sortable" data-sort="term">Term · due<span class="arr">▲</span></th>
         <th class="sec" title="Course checklist">1<small>Checklist</small></th>
         <th class="sec" title="Course syllabus">2<small>Syllabus</small></th>
         <th class="sec" title="Instructional materials">3<small>Materials</small></th>
@@ -287,13 +426,28 @@ td.cell{text-align:center;padding-inline:2px}
         <th class="sec" title="Attendance">5<small>Attend.</small></th>
         <th class="sec" title="Comprehensive review (CRC)">6<small>CRC</small></th>
         <th class="sec" title="Student evaluation (SET)">7<small>SET</small></th>
-        <th>Done</th><th>Review</th><th>Comments</th>
+        <th class="sortable" data-sort="done">Done<span class="arr">▲</span></th>
+        <th class="sortable" data-sort="review">Review<span class="arr">▲</span></th>
+        <th class="sortable" data-sort="cm">Comments<span class="arr">▲</span></th>
       </tr></thead>
       <tbody id="rows"><tr><td colspan="13" class="empty">Loading course files…</td></tr></tbody>
     </table>
   </div>
-  <p class="note">Department rules: graded samples per assessment and per level (High, Medium, Low) are 1 for classes under 30 students, 2 for 30 to 60 and 3 for more than 60. The syllabus must state the section and campus.</p>
-  <p class="note">The checker compares each course file with the department's model course file (USS001): the seven checklist folders, current and previous syllabus, and for every assessment the instrument, the answer key or rubric, and graded High, Medium and Low samples. Student work is counted, never listed. Quality of content is judged by the reviewer in the comments.</p>
+
+  <div class="gridfoot">
+    <div class="legend" aria-label="Legend">
+      <span><i class="dot ok sm">✓</i>Meets the model course file</span>
+      <span><i class="dot part sm">!</i>Partly there</span>
+      <span><i class="dot miss sm">✕</i>Missing</span>
+      <span><i class="dot none sm">·</i>Not uploaded yet</span>
+    </div>
+    <span class="note">Click a program to fold it. In a course file: <kbd>↑</kbd> <kbd>↓</kbd> previous / next, <kbd>Esc</kbd> close.</span>
+  </div>
+  <details class="how">
+    <summary>How the checker works</summary>
+    <p>The checker compares each course file with the department's model course file (USS001): the seven checklist folders (columns 1–7), current and previous syllabus, and for every assessment the instrument, the answer key or rubric, and graded High, Medium and Low samples. Student work is counted, never listed. Quality of content is judged by the reviewer in the comments.</p>
+    <p>Department rules: graded samples per assessment and per level (High, Medium, Low) are 1 for classes under 30 students, 2 for 30 to 60 and 3 for more than 60. The syllabus must state the section and campus. Empty course files are fine until their due date.</p>
+  </details>
 </div>
 
 <div id="scrim" class="scrim" hidden></div>
@@ -315,8 +469,10 @@ var CF = (function () {
   var TERM_RE = /(20\d\d)\s*[-_/ ]\s*(20)?(\d\d)/g;
   var YEAR_TAG = "2026-27";
 
+  // System / temporary files never count as uploaded work.
+  function isJunk(name) { return /^(desktop\.ini|thumbs\.db|\.ds_store)$/i.test(name || "") || /^~\$/.test(name || "") || /\.(url|lnk|tmp)$/i.test(name || ""); }
   function allFiles(n) {
-    var out = (n.files || []).slice();
+    var out = (n.files || []).filter(function (f) { return !isJunk(f.name); });
     (n.folders || []).forEach(function (f) { out = out.concat(allFiles(f)); });
     return out;
   }
@@ -352,8 +508,9 @@ var CF = (function () {
 
   var ROLE_INS = /instrument|brief|question|paper|task|guideline/i;
   var ROLE_KEY = /answer|marking|scheme|rubric|key|solution|worked/i;
-  var ROLE_GRD = /graded|sample|student\s*work|scripts/i;
-  var LV = [["h", /high/i], ["m", /medium|\bmed\b|mid/i], ["l", /\blow/i]];
+  var ROLE_GRD = /graded|sample|student|submission|scripts|marked/i;
+  // Level names: the model uses High / Medium / Low; common alternatives are accepted too.
+  var LV = [["h", /high|excellent|outstanding|\btop\b|\bbest\b/i], ["m", /medium|\bmed\b|\bmid\b|middle|average|moderate/i], ["l", /\blow|weak|poor|below/i]];
 
   function levelOf(name) {
     for (var i = 0; i < LV.length; i++) if (LV[i][1].test(name)) return LV[i][0];
@@ -366,6 +523,8 @@ var CF = (function () {
     if (ROLE_INS.test(name)) return "ins";
     return null;
   }
+  // Count graded files by level. Files sitting outside a level folder whose own name gives the level
+  // (e.g. "High - report.pdf") count for that level; anything else is "unsorted" graded work.
   function levels(node, acc) {
     (node.folders || []).forEach(function (f) {
       var l = levelOf(f.name);
@@ -374,27 +533,43 @@ var CF = (function () {
     });
     return acc;
   }
+  function unsorted(node) {
+    var n = 0;
+    (node.files || []).forEach(function (f) { if (isJunk(f.name)) return; var l = levelOf(f.name); if (!l) n++; });
+    (node.folders || []).forEach(function (f) { if (!levelOf(f.name)) n += unsorted(f); });
+    return n;
+  }
+  function looseLevels(node, acc) {
+    (node.files || []).forEach(function (f) { var l = !isJunk(f.name) && levelOf(f.name); if (l) acc[l]++; });
+    return acc;
+  }
   function checkAssessment(a) {
-    var r = { name: a.name, ins: 0, key: 0, h: 0, m: 0, l: 0, loose: 0 };
-    (a.files || []).forEach(function (f) {
+    var r = { name: a.name, ins: 0, key: 0, h: 0, m: 0, l: 0, loose: 0, unl: 0 };
+    (a.files || []).filter(function (f) { return !isJunk(f.name); }).forEach(function (f) {
       if (ROLE_KEY.test(f.name)) r.key++; else r.ins++;
       if (/rubric|guideline/i.test(f.name) && ROLE_KEY.test(f.name)) { /* instrument + rubric in one file */ r.ins = Math.max(r.ins, 1); }
     });
-    var graded = null;
+    var graded = null, other = [];
     (a.folders || []).forEach(function (f) {
       var role = roleOf(f.name);
       if (role === "ins") { r.ins += allFiles(f).length; allFiles(f).forEach(function (x) { if (/key|answer|rubric|marking/i.test(x.name)) r.key++; }); }
       else if (role === "key") r.key += allFiles(f).length;
       else if (role === "grd") graded = f;
+      else if (role !== "lvl") other.push(f);
     });
     var lv = levels(graded || a, { h: 0, m: 0, l: 0 });
+    if (graded) looseLevels(graded, lv);
     r.h = lv.h; r.m = lv.m; r.l = lv.l;
-    if (graded) r.loose = (graded.files || []).length;
+    // Graded work that is uploaded but not sorted or named by level (e.g. files named after the student).
+    if (graded) { r.unl = unsorted(graded); r.loose = r.unl; }
+    else other.forEach(function (f) { r.unl += allFiles(f).length; });
+    // A rubric or answer key anywhere in the assessment counts, whatever folder it is in.
+    if (!r.key && allFiles(a).some(function (x) { return /rubric|answer|marking|\bkey\b/i.test(x.name); })) r.key = 1;
     return r;
   }
 
   function evaluate(root) {
-    var items = [], issues = [], assessments = [];
+    var items = [], issues = [], notes = [], assessments = [];
     var total = allFiles(root).length;
     SECTIONS.forEach(function (s) {
       var f = findSection(root, s);
@@ -441,9 +616,11 @@ var CF = (function () {
             if (!a.ins) miss.push("assessment instrument");
             if (!a.key) miss.push("answer key / marking scheme or rubric");
             var lv = []; if (!a.h) lv.push("High"); if (!a.m) lv.push("Medium"); if (!a.l) lv.push("Low");
+            // Unsorted graded files (e.g. named after the student) cover levels that have no folder of their own.
+            if (lv.length && a.unl >= lv.length) { notes.push(a.name + ": " + plural(a.unl, "graded file") + " uploaded but not sorted or named by level (e.g. named after the student). Accepted as uploaded."); lv = []; }
+            else if (!lv.length && a.unl) notes.push(a.name + ": " + plural(a.unl, "graded file") + " not placed in a High / Medium / Low folder. Accepted as uploaded.");
             if (lv.length) miss.push("graded sample: " + lv.join(", "));
             if (miss.length) gaps.push(a.name + ": missing " + miss.join("; ") + ".");
-            if (a.loose) issues.push(a.name + ": " + plural(a.loose, "graded file") + " not placed in a High / Medium / Low folder.");
           });
           it.s = gaps.length ? "part" : "ok";
           it.note = gaps.length ? gaps.length + " of " + assessments.length + " assessments incomplete." : plural(assessments.length, "assessment") + " with instrument, key/rubric and High, Medium and Low samples.";
@@ -469,7 +646,7 @@ var CF = (function () {
     var ok = items.filter(function (i) { return i.s === "ok"; }).length;
     var part = items.filter(function (i) { return i.s === "part"; }).length;
     var state = total === 0 ? "not_started" : (ok === 7 ? "complete" : "in_progress");
-    return { items: items, issues: issues, assessments: assessments.map(function (a) { return { name: a.name, ins: a.ins > 0, key: a.key > 0, h: a.h, m: a.m, l: a.l }; }), files: total, state: state, score: Math.round(((ok + part * 0.5) / 7) * 100) };
+    return { items: items, issues: issues, notes: notes, assessments: assessments.map(function (a) { return { name: a.name, ins: a.ins > 0, key: a.key > 0, h: a.h, m: a.m, l: a.l, unl: a.unl || 0 }; }), files: total, state: state, score: Math.round(((ok + part * 0.5) / 7) * 100) };
   }
 
   function emptyEval() {
@@ -545,7 +722,9 @@ if (typeof module !== "undefined") module.exports = CF;
     courses: [], comments: [], people: [], config: {}, cfgLoaded: false,
     view: (function () { try { var v = localStorage.getItem("folio-sem"); if (v && v.indexOf("/") > 0) { var p = v.split("/"); return { year: p[0], semester: p[1] }; } } catch (e) {} return null; })(),
     scope: "all", open: null, filters: { prog: "", term: "", state: "", inst: "", text: "" },
-    names: {}, scanning: false, kpiFilter: ""
+    names: {}, scanning: false, kpiFilter: "",
+    sort: { key: "course", dir: 1 }, order: [],
+    collapsed: (function () { try { return JSON.parse(localStorage.getItem("folio-collapsed") || "{}") || {}; } catch (e) { return {}; } })()
   };
 
   var $ = function (id) { return document.getElementById(id); };
@@ -597,13 +776,19 @@ if (typeof module !== "undefined") module.exports = CF;
     var key = (+c.enrolled || 0) + "|" + JSON.stringify(s.syllabus || null) + "|" + JSON.stringify(c.accepted || null);
     var m = effMemo.get(s); if (m && m.key === key) return m.val;
     var items = (s.items || []).map(function (i) { return Object.assign({}, i); });
-    var issues = (s.issues || []).slice();
+    var issues = [], notes = (s.notes || []).slice();
+    // Older scans listed unsorted graded files as issues; they are accepted notes now.
+    (s.issues || []).forEach(function (x) { if (/graded files? not placed in a High \/ Medium \/ Low folder\.$/.test(x)) notes.push(x + " Accepted as uploaded."); else issues.push(x); });
     var byK = {}; items.forEach(function (i) { byK[i.k] = i; });
     var nd = need(c), short = [];
     (s.assessments || []).forEach(function (a) {
-      if (!(a.h && a.m && a.l)) return; // already reported as missing
-      var lv = []; if (a.h < nd) lv.push("High " + a.h); if (a.m < nd) lv.push("Medium " + a.m); if (a.l < nd) lv.push("Low " + a.l);
-      if (lv.length) short.push(a.name + ": " + nd + " samples per level needed, found " + lv.join(", ") + ".");
+      var unl = a.unl || 0, zeros = (a.h ? 0 : 1) + (a.m ? 0 : 1) + (a.l ? 0 : 1);
+      if (zeros > unl) return; // already reported as missing
+      var lv = [], gap = 0; [["High", a.h], ["Medium", a.m], ["Low", a.l]].forEach(function (p) { if (p[1] < nd) { lv.push(p[0] + " " + p[1]); gap += nd - p[1]; } });
+      if (!lv.length) return;
+      // Graded files that are uploaded but not sorted/named by level count towards the shortfall.
+      if (unl >= gap) { if (nd > 1) notes.push(a.name + ": " + nd + " samples per level needed; the shortfall is covered by " + unl + " graded file" + (unl === 1 ? "" : "s") + " not sorted by level. Accepted as uploaded."); return; }
+      short.push(a.name + ": " + nd + " samples per level needed, found " + lv.join(", ") + (unl ? " (plus " + unl + " not sorted by level)" : "") + ".");
     });
     if (short.length && byK[4]) {
       if (byK[4].s === "ok") byK[4].s = "part";
@@ -629,16 +814,35 @@ if (typeof module !== "undefined") module.exports = CF;
       if (ISSUE_OF[k]) issues = issues.filter(function (x) { return !ISSUE_OF[k].test(x); });
     });
     var ok = items.filter(function (i) { return i.s === "ok"; }).length, part = items.filter(function (i) { return i.s === "part"; }).length;
-    var val = Object.assign({}, s, { items: items, issues: issues, state: ok === 7 ? "complete" : "in_progress", score: Math.round(((ok + part * 0.5) / 7) * 100) });
+    var val = Object.assign({}, s, { items: items, issues: issues, notes: notes, state: ok === 7 ? "complete" : "in_progress", score: Math.round(((ok + part * 0.5) / 7) * 100) });
     effMemo.set(s, { key: key, val: val });
     return val;
   }
 
+  // What still needs the instructor's attention (drives the reminder lines in emails).
+  function sampleShort(c) { var sc = scan(c); if (sc.state === "not_started") return true; var it = (sc.items || []).filter(function (i) { return i.k === 4; })[0]; return !it || it.s !== "ok" || (sc.issues || []).some(function (x) { return /^Samples/.test(x); }); }
+  function syllabusShort(c) { var sc = scan(c); if (sc.state === "not_started") return true; return (sc.issues || []).some(function (x) { return /^Syllabus: the current syllabus must state/.test(x); }); }
+  // Ready-made reviewer comments. "accept" ones are recorded as notes (not open issues) and accept the item as done.
+  var PRESETS = [
+    { id: "named", sec: 4, accept: true, text: "Graded samples are uploaded, but the files are named after the students (or another name) rather than as in the model course file. Accepted as correct; no action needed." },
+    { id: "place", sec: 0, accept: true, text: "The files are uploaded, but not in the expected sub-folder or not named as in the model course file. Accepted as correct; no action needed." },
+    { id: "campus", sec: 2, accept: true, text: "The syllabus template has no Campus field; the section is stated. Accepted as correct; no action needed." },
+    { id: "manual", sec: 0, accept: true, text: "Checked manually by the reviewer. Accepted as correct; no action needed." },
+    { id: "tidy", sec: 4, accept: false, note: true, text: "Optional, for clarity: please place the graded samples in the High, Medium and Low folders next time." },
+    { id: "missing", sec: 0, accept: false, text: "Please upload the missing item(s) listed in this course file." }
+  ];
   function openComments(cid) { return S.comments.filter(function (m) { return m.courseId === cid && m.kind === "issue" && m.status !== "resolved"; }); }
   function dueFor(c) { var d = semDue(); return c.term === "Term A" ? d.A : c.term === "Term B" ? d.B : c.term === "Full semester" ? d.F : ""; }
   // Display status: an empty course file is fine until its due date.
   function dstate(c) { var s = scan(c).state; if (s !== "not_started") return s; return isOverdue(c) ? "overdue" : "not_due"; }
   function isOverdue(c) { var d = dueFor(c); return d && scan(c).state !== "complete" && new Date(d + "T23:59:59") < new Date(); }
+  // Complete by the checker but not yet approved: waiting for the reviewer.
+  function isReady(c) { return scan(c).state === "complete" && ((c.review || {}).status || "pending") !== "approved"; }
+  var PROG_ORDER = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
+  function progRank(p) { var i = PROG_ORDER.indexOf(p); return i < 0 ? 99 : i; }
+  // "EDC471(E) - EDUC510 - EDUC501 PC" -> main code + cross-listed codes
+  function splitCode(name) { var p = String(name || "").split(/\s+[-+]\s+/); if (p.length < 2 || !p.slice(1).every(function (x) { return /^[A-Za-z]{2,5}\s?\d{2,3}/.test(x); })) return { main: String(name || ""), rest: [] }; return { main: p[0], rest: p.slice(1) }; }
+  function daysTo(d) { if (!d) return null; var t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(d + "T00:00:00") - t) / 86400000); }
   function semCourses() { var k = semKey(); return S.courses.filter(function (c) { return !c.gone && !c.removed && (c.semester || "2026 - 2027/Fall") === k; }); }
   function norm(s) { return String(s || "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim(); }
   function mine(c) {
@@ -658,6 +862,8 @@ if (typeof module !== "undefined") module.exports = CF;
       if (f.state === "open" && !openComments(c.id).length) return false;
       if (f.state === "revise" && rv !== "revise") return false;
       if (f.state === "approved" && rv !== "approved") return false;
+      if (f.state === "ready" && !isReady(c)) return false;
+      if (f.state === "incomplete" && st === "complete") return false;
       if (["complete", "in_progress", "not_due", "overdue"].indexOf(f.state) >= 0 && dstate(c) !== f.state) return false;
       if (t && (c.course + " " + (c.instructor || "") + " " + (c.section || "")).toLowerCase().indexOf(t) < 0) return false;
       return true;
@@ -667,20 +873,43 @@ if (typeof module !== "undefined") module.exports = CF;
   /* ---------- render: summary ---------- */
   function renderSummary() {
     var base = semCourses().filter(function (c) { return S.scope !== "mine" || mine(c); });
-    var n = base.length, comp = 0, prog = 0, none = 0, late = 0, oc = 0, appr = 0;
-    base.forEach(function (c) { var s = dstate(c); if (s === "complete") comp++; else if (s === "in_progress") prog++; else if (s === "overdue") late++; else none++; oc += openComments(c.id).length; if ((c.review || {}).status === "approved") appr++; });
+    var n = base.length, comp = 0, prog = 0, none = 0, late = 0, oc = 0, appr = 0, ready = 0;
+    base.forEach(function (c) { var s = dstate(c); if (s === "complete") comp++; else if (s === "in_progress") prog++; else if (s === "overdue") late++; else none++; oc += openComments(c.id).length; if ((c.review || {}).status === "approved") appr++; if (isReady(c)) ready++; });
     $("sumTitle").textContent = S.scope === "mine" ? "Your course files" : "Department overview";
-    $("sumNote").textContent = n ? appr + " of " + n + " approved by the reviewer" : "";
-    var k = [["", n, "Course files", ""], ["complete", comp, "Complete", "ok"], ["in_progress", prog, "In progress", "part"], ["not_due", none, "Not due yet", "none"], ["overdue", late, "Overdue", "late"], ["open", oc, "Open comments", "kcm"]];
-    $("kpis").innerHTML = k.map(function (x) { return '<button type="button" class="kpi ' + x[3] + '" data-kpi="' + x[0] + '" aria-pressed="' + (S.filters.state === x[0] && x[0] !== "" ? "true" : "false") + '"><b>' + x[1] + "</b><span>" + x[2] + "</span></button>"; }).join("");
+    $("sumNote").textContent = n ? Math.round(comp / n * 100) + "% complete · " + appr + " of " + n + " approved" : "";
+    var k = [["", n, "Course files", ""], ["complete", comp, "Complete", "ok"], ["in_progress", prog, "In progress", "part"], ["not_due", none, "Not due yet", "none"],
+      ["ready", ready, "Ready to review", "ready"], ["approved", appr, "Approved", "appr"], ["overdue", late, "Overdue", "late"], ["open", oc, "Open comments", "kcm"]];
+    $("kpis").innerHTML = k.map(function (x) { return '<button type="button" class="kpi ' + x[3] + (x[0] && !x[1] ? " zero" : "") + '" data-kpi="' + x[0] + '" aria-pressed="' + (S.filters.state === x[0] && x[0] !== "" ? "true" : "false") + '"' + (x[0] ? ' title="Show only: ' + x[2].toLowerCase() + '"' : ' title="Show all course files"') + "><b>" + x[1] + "</b><span>" + x[2] + "</span></button>"; }).join("");
     var progs = {};
-    base.forEach(function (c) { var p = progs[c.programShort] = progs[c.programShort] || { ok: 0, part: 0, none: 0, n: 0, score: 0 }; var s = scan(c).state; p.n++; p.score += scan(c).score; if (s === "complete") p.ok++; else if (s === "in_progress") p.part++; else p.none++; });
-    var order = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
-    var keys = Object.keys(progs).sort(function (a, b) { return (order.indexOf(a) + 99) % 99 - (order.indexOf(b) + 99) % 99; });
+    base.forEach(function (c) { var p = progs[c.programShort] = progs[c.programShort] || { ok: 0, part: 0, none: 0, n: 0, appr: 0 }; var s = scan(c).state; p.n++; if (s === "complete") p.ok++; else if (s === "in_progress") p.part++; else p.none++; if ((c.review || {}).status === "approved") p.appr++; });
+    var keys = Object.keys(progs).sort(function (a, b) { return progRank(a) - progRank(b); });
     $("bars").innerHTML = keys.length ? keys.map(function (p) {
       var v = progs[p], w = function (x) { return (x / v.n * 100).toFixed(2) + "%"; };
-      return '<button type="button" class="barrow" data-prog="' + esc(p) + '" aria-pressed="' + (S.filters.prog === p) + '" title="' + v.ok + " complete, " + v.part + " in progress, " + v.none + ' not started"><span class="lab">' + esc(p) + '</span><span class="stack"><i class="s-ok" style="width:' + w(v.ok) + '"></i><i class="s-part" style="width:' + w(v.part) + '"></i></span><span class="pct">' + v.ok + "/" + v.n + "</span></button>";
+      return '<button type="button" class="barrow" data-prog="' + esc(p) + '" aria-pressed="' + (S.filters.prog === p) + '" title="' + v.ok + " complete, " + v.part + " in progress, " + v.none + " nothing uploaded yet, " + v.appr + ' approved"><span class="lab">' + esc(p) + '</span><span class="pct"><b>' + v.ok + "</b> / " + v.n + " complete" + (v.appr ? " · " + v.appr + " approved" : "") + '</span><span class="stack">' + (v.ok ? '<i class="s-ok" style="width:' + w(v.ok) + '"></i>' : "") + (v.part ? '<i class="s-part" style="width:' + w(v.part) + '"></i>' : "") + "</span></button>";
     }).join("") : '<p class="note">No course files yet.</p>';
+  }
+
+  /* ---------- render: due-date strip ---------- */
+  function renderDue() {
+    var box = $("dueStrip"), d = semDue(), base = semCourses().filter(function (c) { return S.scope !== "mine" || mine(c); });
+    var defs = [["A", "Term A"], ["B", "Term B"], ["F", "Full semester"]], cards = [];
+    defs.forEach(function (x) {
+      var date = d[x[0]]; if (!date) return;
+      var cs = base.filter(function (c) { return c.term === x[1]; }); if (!cs.length) return;
+      var left = cs.filter(function (c) { return scan(c).state !== "complete"; }).length, days = daysTo(date);
+      if (days < -30) return;
+      cards.push({ term: x[1], date: date, days: days, n: cs.length, left: left });
+    });
+    cards.sort(function (a, b) { return a.date.localeCompare(b.date); });
+    if (!cards.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML = cards.map(function (x) {
+      var dt = new Date(x.date + "T00:00:00"), cls = x.left === 0 ? "done" : x.days < 0 ? "late" : x.days <= 7 ? "soon" : "";
+      var when = x.left === 0 ? "All complete" : x.days < 0 ? Math.abs(x.days) + " day" + (Math.abs(x.days) === 1 ? "" : "s") + " overdue" : x.days === 0 ? "Due today" : x.days === 1 ? "Due tomorrow" : "In " + x.days + " days";
+      var on = S.filters.term === x.term && S.filters.state === (x.days < 0 ? "overdue" : "incomplete");
+      var line = x.left === 0 ? "All " + x.n + " course files are complete." : x.left + " of " + x.n + " course file" + (x.n === 1 ? "" : "s") + " not complete yet" + (x.days < 0 ? "" : ". Click to list them.");
+      return '<button type="button" class="due ' + cls + '" data-due="' + esc(x.term) + '" data-late="' + (x.days < 0 ? 1 : 0) + '" aria-pressed="' + on + '"' + (x.left === 0 ? " disabled" : "") + '><span class="cal"><i>' + dt.toLocaleDateString("en-GB", { month: "short" }) + "</i><b>" + dt.getDate() + '</b></span><span class="txt"><b>' + esc(x.term) + " due " + esc(fmtDate(x.date)) + "</b><span>" + esc(line) + '</span></span><span class="when">' + when + "</span></button>";
+    }).join("");
   }
 
   /* ---------- render: grid ---------- */
@@ -690,56 +919,113 @@ if (typeof module !== "undefined") module.exports = CF;
     return '<span class="dot ' + m[0] + '" title="' + esc(it ? it.note : "") + '">' + m[1] + "</span>";
   }
   function stateLabel(s) { return { complete: "Complete", in_progress: "In progress", not_started: "Not started", not_due: "Not due yet", overdue: "Overdue" }[s] || s; }
+  var RV_RANK = { revise: 0, pending: 1, approved: 2 };
+  function sortVal(c, key) {
+    if (key === "inst") return (c.instructor || "~").toLowerCase();
+    if (key === "term") return (c.term || "~") + "|" + (dueFor(c) || "9999");
+    if (key === "done") return scan(c).score;
+    if (key === "review") { var rv = (c.review || {}).status || "pending"; return isReady(c) ? -1 : RV_RANK[rv]; }
+    if (key === "cm") return openComments(c.id).length;
+    return (c.course + " " + (c.section || "")).toLowerCase();
+  }
+  function sorted(list) {
+    var k = S.sort.key, dir = S.sort.dir;
+    return list.slice().sort(function (a, b) {
+      var pa = progRank(a.programShort), pb = progRank(b.programShort); if (pa !== pb) return pa - pb;
+      if (a.programShort !== b.programShort) return String(a.programShort).localeCompare(String(b.programShort));
+      var va = sortVal(a, k), vb = sortVal(b, k), r = typeof va === "number" ? va - vb : String(va).localeCompare(String(vb));
+      if (!r) r = (a.course + a.section).localeCompare(b.course + b.section);
+      return r * dir;
+    });
+  }
+  function reviewHTML(c) {
+    var rv = (c.review || {}).status || "pending";
+    if (rv === "approved") return '<span class="state approved">✓ Approved</span>';
+    if (rv === "revise") return '<span class="state revise">Needs revision</span>' + (isReady(c) ? '<div class="csub">Now complete: recheck</div>' : "");
+    if (isReady(c)) return '<span class="state ready">Ready to review</span>';
+    return '<span class="state pending">Not reviewed</span>';
+  }
   function renderGrid() {
     var list = visible();
     var tb = $("rows");
+    Array.prototype.forEach.call(document.querySelectorAll(".grid th[data-sort]"), function (th) { th.setAttribute("aria-sort", th.dataset.sort === S.sort.key ? (S.sort.dir > 0 ? "ascending" : "descending") : "none"); th.querySelector(".arr").textContent = th.dataset.sort === S.sort.key && S.sort.dir < 0 ? "▼" : "▲"; });
+    S.order = [];
     if (!S.db) { tb.innerHTML = '<tr><td colspan="13" class="empty">Open this page in Claude while signed in to see the course files.</td></tr>'; return; }
     if (!semCourses().length) { tb.innerHTML = '<tr><td colspan="13" class="empty">No course files recorded for ' + esc(semLabel()) + " yet." + (S.isLead ? " Press <b>Scan SharePoint</b> to read the folders." : "") + "</td></tr>"; return; }
-    if (!list.length) { tb.innerHTML = '<tr><td colspan="13" class="empty">' + (S.scope === "mine" ? "No course files are linked to your email yet. Switch to <b>All</b> to browse." : "No course files match these filters.") + "</td></tr>"; return; }
-    var order = ["PG Diploma in Teaching", "M.Ed. Educational Leadership", "M.Ed. Educational Technologies & AI", "PhD in Education"];
-    list.sort(function (a, b) { var pa = order.indexOf(a.programShort), pb = order.indexOf(b.programShort); if (pa !== pb) return pa - pb; return (a.course + a.section).localeCompare(b.course + b.section); });
-    var html = "", last = "";
-    list.forEach(function (c) {
-      if (c.programShort !== last) { last = c.programShort; html += '<tr class="prog"><td colspan="13">' + esc(last) + "</td></tr>"; }
-      var sc = scan(c), st = sc.state, rv = (c.review || {}).status || "pending", oc = openComments(c.id).length;
-      var items = {}; (sc.items || []).forEach(function (i) { items[i.k] = i; });
-      var cells = ""; for (var k = 1; k <= 7; k++) cells += '<td class="cell">' + cellHTML(items[k], st) + "</td>";
-      var col = st === "complete" ? "var(--ok)" : st === "in_progress" ? "var(--part)" : "var(--none)";
-      html += '<tr data-id="' + esc(c.id) + '" tabindex="0">' +
-        '<td><div class="ccode">' + esc(c.course) + '</div><div class="csub">' + esc(c.section && !c.instructor ? c.section : stateLabel(dstate(c))) + (isOverdue(c) && st !== "not_started" ? ' · <span class="state overdue">Overdue</span>' : "") + (st === "not_started" && dueFor(c) && !isOverdue(c) ? ' · due ' + esc(fmtDate(dueFor(c))) : "") + "</div></td>" +
-        "<td>" + (c.instructor ? esc(c.instructor) : '<span class="muted">Not set</span>') + "</td>" +
-        "<td>" + (c.term ? esc(c.term) : '<span class="muted">—</span>') + "</td>" + cells +
-        '<td><div class="ring" style="--p:' + sc.score + ";--c:" + col + '"><b>' + sc.score + "%</b></div></td>" +
-        '<td><span class="state ' + rv + '">' + ({ pending: "Not reviewed", approved: "Approved", revise: "Needs revision" }[rv]) + "</span></td>" +
-        "<td>" + (oc ? '<span class="cm">● ' + oc + " open</span>" : '<span class="muted">—</span>') + "</td></tr>";
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="13" class="empty">' + (S.scope === "mine" ? "No course files are linked to your email yet. Switch to <b>All</b> to browse." : "No course files match these filters. " + '<button class="btn small" type="button" id="btnClear2">Clear filters</button>') + "</td></tr>"; return; }
+    list = sorted(list);
+    var groups = [], gi = {};
+    list.forEach(function (c) { var g = gi[c.programShort]; if (!g) { g = gi[c.programShort] = { name: c.programShort, items: [] }; groups.push(g); } g.items.push(c); });
+    var html = "";
+    groups.forEach(function (g) {
+      var open = !S.collapsed[g.name], n = g.items.length, ok = 0, part = 0, ready = 0, late = 0;
+      g.items.forEach(function (c) { var s = scan(c).state; if (s === "complete") ok++; else if (s === "in_progress") part++; if (isReady(c)) ready++; if (isOverdue(c)) late++; });
+      html += '<tr class="prog"><td colspan="13"><button type="button" class="proghead" data-group="' + esc(g.name) + '" aria-expanded="' + open + '"><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span class="pn">' + esc(g.name) + '</span><span class="pc">' + ok + " / " + n + ' complete</span><span class="mini" aria-hidden="true"><i style="width:' + (ok / n * 100) + '%;background:var(--ok)"></i><i style="width:' + (part / n * 100) + '%;background:var(--part)"></i></span><span class="chips">' + (ready ? '<span class="state ready">' + ready + " ready to review</span>" : "") + (late ? '<span class="state overdue">' + late + " overdue</span>" : "") + "</span></button></td></tr>";
+      if (!open) return;
+      g.items.forEach(function (c) {
+        S.order.push(c.id);
+        var sc = scan(c), st = sc.state, oc = openComments(c.id).length, due = dueFor(c), late = isOverdue(c);
+        var items = {}; (sc.items || []).forEach(function (i) { items[i.k] = i; });
+        var cells = "", mcells = "";
+        if (st === "not_started") {
+          cells = '<td class="empty7" colspan="7"><span class="awaiting' + (late ? " late" : "") + '">' + (late ? "Nothing uploaded · overdue since " + esc(fmtDate(due)) : "Nothing uploaded yet") + "</span></td>";
+        } else {
+          for (var k = 1; k <= 7; k++) { var dh = cellHTML(items[k], st); cells += '<td class="cell">' + dh + "</td>"; mcells += dh; }
+          mcells = '<td class="cells-m">' + mcells + "</td>";
+        }
+        var col = st === "complete" ? "var(--ok)" : st === "in_progress" ? "var(--part)" : "var(--none)";
+        var code = splitCode(c.course);
+        var sub = st === "complete" ? '<span class="state complete">Complete</span>' : st === "in_progress" ? '<span class="state in_progress">In progress</span>' + (late ? '<span class="state overdue">Overdue</span>' : "") : "";
+        if (c.section && !c.instructor) sub = esc(c.section) + " " + sub;
+        html += '<tr data-id="' + esc(c.id) + '" tabindex="0"' + (S.open === c.id ? ' class="current"' : "") + ">" +
+          '<td class="c-course"><div class="ccode">' + esc(code.main) + "</div>" + (code.rest.length ? '<div class="cx">with ' + esc(code.rest.join(", ")) + "</div>" : "") + (sub ? '<div class="csub">' + sub + "</div>" : "") + "</td>" +
+          '<td class="c-inst">' + (c.instructor ? esc(c.instructor) : '<span class="muted">Not set</span>') + "</td>" +
+          '<td class="c-term">' + (c.term ? esc(c.term) : '<span class="muted">Term not set</span>') + (due ? "<small>due " + esc(fmtDate(due).replace(/ \d{4}$/, "")) + "</small>" : "") + "</td>" + cells + mcells +
+          '<td class="c-done">' + (sc.score ? '<div class="ring" style="--p:' + sc.score + ";--c:" + col + '" title="' + sc.score + '% done"><b>' + sc.score + "%</b></div>" : '<span class="zero">0%</span>') + "</td>" +
+          '<td class="c-rev">' + reviewHTML(c) + "</td>" +
+          '<td class="c-cm">' + (oc ? '<span class="cm">' + oc + " open</span>" : '<span class="muted">—</span>') + "</td></tr>";
+      });
     });
     tb.innerHTML = html;
   }
+  function filtersActive() { var f = S.filters; return !!(f.prog || f.term || f.state || f.inst || f.text.trim()); }
   function renderFilters() {
     var cs = semCourses();
-    var progs = Array.from(new Set(cs.map(function (c) { return c.programShort; }))).sort();
+    var progs = Array.from(new Set(cs.map(function (c) { return c.programShort; }))).sort(function (a, b) { return progRank(a) - progRank(b); });
     var insts = Array.from(new Set(cs.map(function (c) { return c.instructor; }).filter(Boolean))).sort();
     fillSelect($("fProg"), "All programs", progs, S.filters.prog);
     fillSelect($("fInst"), "All instructors", insts, S.filters.inst);
+    $("fTerm").value = S.filters.term; $("fState").value = S.filters.state;
+    if ($("fText").value !== S.filters.text) $("fText").value = S.filters.text;
+    $("btnClear").hidden = !filtersActive();
+    var base = cs.filter(function (c) { return S.scope !== "mine" || mine(c); }).length, shown = visible().length;
+    $("countLine").textContent = base ? (shown === base ? base + " course files" : "Showing " + shown + " of " + base) : "";
   }
+  function clearFilters() { S.filters = { prog: "", term: "", state: "", inst: "", text: "" }; renderAll(); }
   function fillSelect(el, first, vals, cur) { el.innerHTML = '<option value="">' + first + "</option>" + vals.map(function (v) { return "<option" + (v === cur ? " selected" : "") + ">" + esc(v) + "</option>"; }).join(""); }
   function renderHeader() {
     var so = semOptions(), ss = $("semSel"), cur = semKey();
     ss.innerHTML = so.map(function (o) { return '<option value="' + esc(o.k) + '"' + (o.k === cur ? " selected" : "") + ">" + esc(semLabelOf(o.k)) + (o.n ? " (" + o.n + ")" : "") + "</option>"; }).join("");
-    var ls = semLastScan();
-    $("scanLine").textContent = ls ? "Checked against SharePoint " + fmtDT(ls.at) : "Not scanned yet";
-    $("leadActions").hidden = !S.isLead;
+    var ls = semLastScan(), sl = $("scanLine");
+    sl.textContent = ls ? "Checked against SharePoint " + fmtDT(ls.at) : "Not scanned yet";
+    sl.classList.toggle("stale", !ls || (Date.now() - new Date(ls.at)) > 3 * 86400000);
+    $("leadActions").hidden = !S.isLead; $("scanBox").hidden = !S.isLead;
     var sp = $("scanProg"), cur = sp.value, pf = programFolders();
     if (sp.options.length !== pf.length + 1) { sp.innerHTML = '<option value="">All programs</option>' + pf.map(function (p) { return '<option value="' + esc(p) + '">' + esc(CF.programShort(p)) + "</option>"; }).join(""); sp.value = cur; }
     $("scopeSeg").hidden = !S.courses.some(mine);
     Array.prototype.forEach.call($("scopeSeg").querySelectorAll("button"), function (b) { b.setAttribute("aria-pressed", b.dataset.scope === S.scope); });
   }
-  function renderAll() { renderHeader(); renderFilters(); renderSummary(); renderGrid(); if (S.open && S.open !== "__new" && S.open !== "__panel") renderSheet(); if (S.open === "__panel" && S._panelIs === "rem") renderReminders(); }
+  function renderAll() { renderHeader(); renderFilters(); renderDue(); renderSummary(); renderGrid(); if (S.open && S.open !== "__new" && S.open !== "__panel") renderSheet(); if (S.open === "__panel" && S._panelIs === "rem") renderReminders(); }
 
   /* ---------- detail sheet ---------- */
   function course(id) { return S.courses.find(function (c) { return c.id === id; }); }
-  function openSheet(id) { S.open = id; $("sheet").hidden = false; $("scrim").hidden = false; renderSheet(); try { $("sheet").querySelector(".x").focus(); } catch (e) {} }
-  function closeSheet() { S.open = null; $("sheet").hidden = true; $("scrim").hidden = true; }
+  function markCurrent() { Array.prototype.forEach.call(document.querySelectorAll("#rows tr[data-id]"), function (r) { r.classList.toggle("current", r.dataset.id === S.open); }); }
+  function openSheet(id) { var was = S.open && S.open.indexOf("__") !== 0; S.open = id; $("sheet").hidden = false; $("scrim").hidden = false; renderSheet(); markCurrent(); try { if (!was) $("sheet").querySelector(".x").focus(); } catch (e) {} }
+  function closeSheet() { var id = S.open; S.open = null; $("sheet").hidden = true; $("scrim").hidden = true; markCurrent(); var r = id && document.querySelector('#rows tr[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); if (r) try { r.focus(); } catch (e) {} }
+  // Previous / next course file in the order the grid shows them.
+  function stepSheet(d) { var i = S.order.indexOf(S.open); if (i < 0) return; var j = i + d; if (j < 0 || j >= S.order.length) return; openSheet(S.order[j]); var r = document.querySelector('#rows tr[data-id="' + S.order[j] + '"]'); if (r && r.scrollIntoView) r.scrollIntoView({ block: "nearest" }); }
+  // Comments by the reviewer always show the reviewer's name from Settings (the signed-in account may be a shared one).
+  function authorName(m) { return m && m.role === "lead" ? (S.config.reviewerName || "Mousa Alhatti") : personName(m && m.by); }
   function personName(uid) { return (S.names[uid] && S.names[uid].name) || "Someone"; }
 
   function programFolders() {
@@ -773,27 +1059,29 @@ if (typeof module !== "undefined") module.exports = CF;
     var issuesBySec = {}; cms.forEach(function (m) { if (m.kind === "issue" && m.status !== "resolved") issuesBySec[m.sec || 0] = (issuesBySec[m.sec || 0] || 0) + 1; });
     var lead = S.isLead;
     var termSel = lead ? '<select id="mTerm" aria-label="Term"><option value="">Term not set</option>' + TERMS.map(function (t) { return "<option" + (c.term === t ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" : esc(c.term || "Term not set");
-    var instEd = lead ? '<input id="mInst" value="' + esc(c.instructor || "") + '" placeholder="Instructor name" aria-label="Instructor" style="width:150px"> <input id="mEmail" value="' + esc(c.email || "") + '" placeholder="email@adu.ac.ae" aria-label="Instructor email" style="width:190px"> <label class="note" for="mStud">Students</label> <input id="mStud" type="number" min="0" value="' + esc(c.enrolled || "") + '" placeholder="?" style="width:64px"> <button class="btn small" type="button" id="mSave">Save</button>' : esc(c.instructor || "Instructor not set") + (c.email ? ' · <span class="copyable">' + esc(c.email) + "</span>" : "") + (c.enrolled ? " · " + esc(c.enrolled) + " students" : "");
+    var instEd = lead ? '<div class="edit-grid"><input id="mInst" value="' + esc(c.instructor || "") + '" placeholder="Instructor name" aria-label="Instructor"><input id="mEmail" value="' + esc(c.email || "") + '" placeholder="email@adu.ac.ae" aria-label="Instructor email"><input id="mStud" type="number" min="0" value="' + esc(c.enrolled || "") + '" placeholder="Students" aria-label="Students" title="Students enrolled"><button class="btn small" type="button" id="mSave">Save</button></div>' : '<div class="meta">' + esc(c.instructor || "Instructor not set") + (c.email ? ' · <span class="copyable">' + esc(c.email) + "</span>" : "") + (c.enrolled ? " · " + esc(c.enrolled) + " students" : "") + "</div>";
+    var pos = S.order.indexOf(c.id), code = splitCode(c.course);
+    var nav = pos >= 0 ? '<button class="navb" type="button" id="sPrev" aria-label="Previous course file" title="Previous (↑)"' + (pos === 0 ? " disabled" : "") + '><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><span class="pos">' + (pos + 1) + " / " + S.order.length + '</span><button class="navb" type="button" id="sNext" aria-label="Next course file" title="Next (↓)"' + (pos === S.order.length - 1 ? " disabled" : "") + '><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>' : "";
 
-    var h = '<div class="sheet-head"><div class="row"><div style="display:grid;gap:4px;min-width:0"><span class="eyebrow">' + esc(c.programShort) + '</span><h2 id="dTitle" style="font-size:1.3rem"><span class="ccode" style="font-size:1rem">' + esc(c.course) + "</span>" + (c.section ? ' <span class="muted" style="font-weight:500;font-size:.9rem">· ' + esc(c.section) + "</span>" : "") + '</h2></div><button class="x" type="button" aria-label="Close">×</button></div>' +
-      '<div class="meta">' + instEd + "</div>" +
-      '<div class="meta"><span>' + termSel + "</span>" + (dueFor(c) ? "<span>Due " + fmtDate(dueFor(c)) + "</span>" : "") + '<span class="state ' + dstate(c) + '">' + stateLabel(dstate(c)) + " · " + sc.score + '%</span><a href="' + esc(folderUrl(c.path)) + '" target="_blank" rel="noopener">Open folder in SharePoint ↗</a>' + (lead ? '<button class="btn small" type="button" id="btnRescan">Rescan this course file</button><button class="btn small" type="button" id="btnExpCourse">Export…</button>' : "") + "</div></div>";
+    var h = '<div class="sheet-head"><div class="row"><div style="display:grid;gap:3px;min-width:0"><span class="eyebrow">' + esc(c.programShort) + '</span><h2 id="dTitle" style="font-size:1.3rem">' + esc(code.main) + (c.section ? ' <span class="muted" style="font-weight:500;font-size:.88rem">· ' + esc(c.section) + "</span>" : "") + "</h2>" + (code.rest.length ? '<span class="cx">Cross-listed with ' + esc(code.rest.join(", ")) + "</span>" : "") + '</div><div class="nav">' + nav + '<button class="x" type="button" aria-label="Close" title="Close (Esc)">×</button></div></div>' +
+      '<div class="meta"><span class="state ' + dstate(c) + '">' + stateLabel(dstate(c)) + " · " + sc.score + "%</span>" + reviewHTML(c) + "<span>" + termSel + "</span>" + (dueFor(c) ? "<span>Due " + fmtDate(dueFor(c)) + "</span>" : "") + '<a href="' + esc(folderUrl(c.path)) + '" target="_blank" rel="noopener">Open folder in SharePoint ↗</a></div>' +
+      (lead ? '<div class="editrow">' + instEd + '<span class="acts"><button class="btn small" type="button" id="btnRescan">Rescan</button><button class="btn small" type="button" id="btnExpCourse">Export…</button></span></div>' : instEd) + "</div>";
 
     h += '<div class="sheet-body">';
     if (c.scanNote) h += '<div class="banner warn">' + esc(c.scanNote) + "</div>";
     // review decision
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Reviewer decision</h3>' +
-      (lead ? '<div class="decide"><button type="button" class="btn ap" data-review="approved" aria-pressed="' + (rv === "approved") + '">✓ Approve course file</button><button type="button" class="btn rv" data-review="revise" aria-pressed="' + (rv === "revise") + '">Needs revision</button><button type="button" class="btn" data-review="pending" aria-pressed="' + (rv === "pending") + '">Not reviewed</button></div>' : '<div><span class="state ' + rv + '">' + ({ pending: "Not reviewed yet", approved: "Approved", revise: "Needs revision" }[rv]) + "</span></div>") +
+    h += '<section><h3>Reviewer decision</h3>' +
+      (lead ? '<div class="decide"><button type="button" class="btn ap" data-review="approved" aria-pressed="' + (rv === "approved") + '">✓ Approve</button><button type="button" class="btn rv" data-review="revise" aria-pressed="' + (rv === "revise") + '">Needs revision</button><button type="button" class="btn" data-review="pending" aria-pressed="' + (rv === "pending") + '">Not reviewed</button></div>' : '<div><span class="state ' + rv + '">' + ({ pending: "Not reviewed yet", approved: "Approved", revise: "Needs revision" }[rv]) + "</span></div>") +
       ((c.review || {}).at ? '<span class="note">Updated ' + fmtDT(c.review.at) + "</span>" : "") + "</section>";
     // Department rules
     var nd = need(c);
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Department rules</h3><div class="checks" style="padding:12px 14px;display:grid;gap:6px;font-size:.86rem">' +
+    h += '<section><h3>Department rules</h3><div class="checks" style="padding:12px 14px;display:grid;gap:6px;font-size:.86rem">' +
       "<div>Graded samples required: <b>" + nd + " High, " + nd + " Medium, " + nd + " Low</b> per assessment " + (c.enrolled ? "(class of " + esc(c.enrolled) + ")" : '<span class="muted">(class size not recorded, so the minimum of 1 is applied)</span>') + "</div>" +
       "<div>Syllabus must state the section and campus" + (sc.syllabus ? (sc.syllabus.read ? " · " + esc(sc.syllabus.file || "") + ": campus " + (sc.syllabus.campus ? "✓" : "✕") + ", section " + (sc.syllabus.section ? "✓" : "✕") + ", office hours " + (sc.syllabus.office ? "✓" : "✕") + ", faculty name " + (sc.syllabus.faculty ? "✓" : "✕") : " · the current syllabus could not be read") : ' <span class="muted">(checked at the next scan)</span>') + "</div>" +
       (c.emailedAt ? "<div>Instructor emailed " + fmtDT(c.emailedAt) + "</div>" : "") + "</div></section>";
 
     // checklist
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Checklist against the model course file</h3><div class="checks">';
+    h += '<section><h3>Checklist against the model course file</h3><div class="checks">';
     CF.SECTIONS.forEach(function (s) {
       var it = items[s.k];
       var cls = sc.state === "not_started" ? "none" : (it ? it.s : "miss");
@@ -806,7 +1094,7 @@ if (typeof module !== "undefined") module.exports = CF;
 
     // assessments
     if ((sc.assessments || []).length) {
-      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Assessment evidence</h3><div style="overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px"><table class="amx"><thead><tr><th>Assessment</th><th>Instrument</th><th>Key / rubric</th><th>High</th><th>Medium</th><th>Low</th></tr></thead><tbody>';
+      h += '<section><h3>Assessment evidence</h3><div style="overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px"><table class="amx"><thead><tr><th>Assessment</th><th>Instrument</th><th>Key / rubric</th><th>High</th><th>Medium</th><th>Low</th></tr></thead><tbody>';
       sc.assessments.forEach(function (a) {
         var yn = function (b) { return b ? '<span class="yes">✓</span>' : '<span class="no">✕</span>'; };
         var nn = function (n) { return n ? '<span class="yes">✓</span>' : '<span class="no">✕</span>'; };
@@ -816,12 +1104,15 @@ if (typeof module !== "undefined") module.exports = CF;
     }
 
     // auto issues
+    if ((sc.notes || []).length) {
+      h += '<section><h3>Notes <span class="note" style="font-weight:400">(accepted, no action needed)</span></h3><ul class="issues" style="color:var(--muted)">' + sc.notes.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></section>";
+    }
     if ((sc.issues || []).length) {
-      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Found by the automatic check</h3><ul class="issues">' + sc.issues.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></section>";
+      h += '<section><h3>Found by the automatic check</h3><ul class="issues">' + sc.issues.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul></section>";
     }
 
     // comments
-    h += '<section style="display:grid;gap:10px"><h3 style="font-size:.95rem">Review comments</h3><div class="thread">';
+    h += '<section><h3>Review comments</h3><div class="thread">';
     var roots = cms.filter(function (m) { return !m.parent; });
     if (!roots.length) h += '<p class="note">No comments yet.</p>';
     roots.forEach(function (m) {
@@ -830,14 +1121,14 @@ if (typeof module !== "undefined") module.exports = CF;
     });
     h += "</div>";
     if (S.db) {
-      h += '<div class="composer"><div class="row"><label for="cSec" class="note">About</label><select id="cSec"><option value="0">Whole course file</option>' + CF.SECTIONS.map(function (s) { return '<option value="' + s.k + '">' + s.k + ". " + esc(s.short) + "</option>"; }).join("") + '</select></div><textarea id="cText" placeholder="' + (lead ? "Write a comment or issue for the instructor…" : "Write a note to the reviewer…") + '"></textarea><div class="row"><button class="btn primary" type="button" id="cPost">' + (lead ? "Add comment" : "Send note") + "</button></div></div>";
+      h += '<div class="composer">' + (lead ? '<div class="row"><label for="cPreset" class="note">Quick comment</label><select id="cPreset"><option value="">Choose a ready-made comment…</option>' + PRESETS.map(function (p) { return '<option value="' + p.id + '">' + esc((p.accept ? "Accepted: " : p.note ? "Note: " : "Issue: ") + p.text.replace(/ (Accepted as correct; no action needed\.|Please |Optional, for clarity: )/, " ").slice(0, 80)) + "…</option>"; }).join("") + "</select></div>" : "") + '<div class="row"><label for="cSec" class="note">About</label><select id="cSec"><option value="0">Whole course file</option>' + CF.SECTIONS.map(function (s) { return '<option value="' + s.k + '">' + s.k + ". " + esc(s.short) + "</option>"; }).join("") + '</select></div><textarea id="cText" placeholder="' + (lead ? "Write a comment or issue for the instructor…" : "Write a note to the reviewer…") + '"></textarea><div class="row"><button class="btn primary" type="button" id="cPost">' + (lead ? "Add comment" : "Send note") + "</button></div></div>";
     }
     h += "</section>";
 
     // email
     if (lead) {
       var mail = buildEmail(c);
-      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Email the instructor</h3><div class="composer">' +
+      h += '<section><h3>Email the instructor</h3><div class="composer">' +
         '<input id="eTo" value="' + esc(c.email || "") + '" placeholder="instructor@adu.ac.ae" aria-label="To">' +
         '<input id="eCc" value="" placeholder="Cc (optional)" aria-label="Cc">' +
         '<input id="eSubj" value="' + esc(mail.subject) + '" aria-label="Subject">' +
@@ -846,7 +1137,7 @@ if (typeof module !== "undefined") module.exports = CF;
         '<span class="note">Outlook opens a new message with this text in your browser. Check it and press Send there.</span></div></section>';
     }
     if (lead) {
-      h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Course details</h3><div class="settings-grid">' +
+      h += '<section><h3>Course details</h3><div class="settings-grid">' +
         '<label for="dCourse">Course name' + inp("dCourse", c.course) + "</label>" +
         '<label for="dSection">Section / folder label' + inp("dSection", c.section) + "</label>" +
         '<label for="dProg">Program<select id="dProg">' + programFolders().map(function (p) { return "<option" + (p === c.program ? " selected" : "") + ">" + esc(p) + "</option>"; }).join("") + "</select></label></div>" +
@@ -870,7 +1161,7 @@ if (typeof module !== "undefined") module.exports = CF;
     }
     if (!isReply && S.db) acts += '<button class="btn small" type="button" data-reply="' + m.id + '">Reply</button>';
     if ((lead || mineC)) acts += '<button class="btn small" type="button" data-cdel="' + m.id + '">Delete</button>';
-    return '<div class="cmt' + (isReply ? " reply" : "") + '"><div class="h"><b>' + esc(personName(m.by)) + "</b><span>" + (m.role === "lead" ? "Reviewer" : "Instructor") + "</span><span>" + fmtDT(m.at) + "</span>" + (isReply ? "" : "<span>" + sec + "</span>") + st + '</div><div class="t">' + esc(m.text) + "</div>" + (acts ? '<div class="acts">' + acts + "</div>" : "") + '<div class="replybox" data-for="' + m.id + '" hidden></div></div>';
+    return '<div class="cmt' + (isReply ? " reply" : "") + '"><div class="h"><b>' + esc(authorName(m)) + "</b><span>" + (m.role === "lead" ? "Reviewer" : "Instructor") + "</span><span>" + fmtDT(m.at) + "</span>" + (isReply ? "" : "<span>" + sec + "</span>") + st + '</div><div class="t">' + esc(m.text) + "</div>" + (acts ? '<div class="acts">' + acts + "</div>" : "") + '<div class="replybox" data-for="' + m.id + '" hidden></div></div>';
   }
 
   function salute(name) { name = (name || "").trim(); if (!name) return "Dear colleague,"; if (/^dr\.?\s/i.test(name)) return "Dear Dr. " + name.replace(/^dr\.?\s+/i, "").split(/\s+/)[0] + ","; return "Dear Dr. " + name.split(/\s+/)[0] + ","; }
@@ -891,7 +1182,10 @@ if (typeof module !== "undefined") module.exports = CF;
     if (oc.length) { lines.push("", "Reviewer comments:"); oc.forEach(function (m) { lines.push("- " + (m.sec ? CF.SECTIONS[m.sec - 1].short + ": " : "") + m.text); }); }
     if (sc.state === "complete" && !oc.length) lines.push("", "All seven sections are in place. Thank you.");
     var nd = need(c);
-    lines.push("", "Reminder: please upload " + nd + " High, " + nd + " Medium and " + nd + " Low graded sample" + (nd > 1 ? "s" : "") + " for each assessment, and make sure the syllabus states the section and campus.");
+    var rem = [];
+    if (sampleShort(c)) rem.push("upload " + nd + " High, " + nd + " Medium and " + nd + " Low graded sample" + (nd > 1 ? "s" : "") + " for each assessment (files can keep the student's name)");
+    if (syllabusShort(c) && !(c.accepted && c.accepted[2])) rem.push("make sure the syllabus states the section and campus");
+    if (rem.length) lines.push("", "Reminder: please " + rem.join(", and ") + ".");
     lines.push("", "Course file folder: " + folderUrl(c.path));
     if (S.config.link) lines.push("You can see the full review and reply to comments here: " + S.config.link);
     return { subject: "Course file review: " + c.course + " (" + sem + ")", body: lines.join("\n") };
@@ -904,8 +1198,9 @@ if (typeof module !== "undefined") module.exports = CF;
 
   /* ---------- writes ---------- */
   function upd(id, data) { return S.db.collection("courses").doc(id).update(data).catch(function (e) { toast("Could not save: " + (e && e.message || e)); throw e; }); }
-  function addComment(c, sec, text, parent) {
-    var doc = { courseId: c.id, sec: +sec || 0, text: text, by: S.me, role: S.isLead ? "lead" : "instructor", at: nowISO(), kind: parent ? "reply" : (S.isLead ? "issue" : "note"), status: parent ? "" : (S.isLead ? "open" : ""), parent: parent || "" };
+  function addComment(c, sec, text, parent, kindOverride) {
+    var kind = parent ? "reply" : (kindOverride || (S.isLead ? "issue" : "note"));
+    var doc = { courseId: c.id, sec: +sec || 0, text: text, by: S.me, role: S.isLead ? "lead" : "instructor", at: nowISO(), kind: kind, status: kind === "issue" ? "open" : "", parent: parent || "" };
     return S.db.collection("comments").add(doc).then(function () { toast(S.isLead ? "Comment added" : "Note sent"); }).catch(function (e) { toast(e && e.code === "not_granted" ? "You need permission to comment. Ask the reviewer to share with 'can use'." : "Could not post the comment."); });
   }
 
@@ -1142,9 +1437,15 @@ if (typeof module !== "undefined") module.exports = CF;
 
   /* ---------- events ---------- */
   document.addEventListener("click", function (ev) {
-    var t = ev.target.closest("button, a, tr[data-id]"); if (!t) return;
+    var t = ev.target.closest("button, a, tr[data-id], th[data-sort]"); if (!t) return;
     if (t.matches("tr[data-id]")) return openSheet(t.dataset.id);
-    if (t.dataset.kpi !== undefined) { S.filters.state = S.filters.state === t.dataset.kpi ? "" : t.dataset.kpi; $("fState").value = S.filters.state; return renderAll(); }
+    if (t.matches("th[data-sort]")) { var sk = t.dataset.sort; S.sort = S.sort.key === sk ? { key: sk, dir: -S.sort.dir } : { key: sk, dir: sk === "done" || sk === "cm" ? -1 : 1 }; return renderGrid(); }
+    if (t.dataset.group) { S.collapsed[t.dataset.group] = !S.collapsed[t.dataset.group]; try { localStorage.setItem("folio-collapsed", JSON.stringify(S.collapsed)); } catch (e) {} return renderGrid(); }
+    if (t.dataset.due) { var late = t.dataset.late === "1", stv = late ? "overdue" : "incomplete", on = S.filters.term === t.dataset.due && S.filters.state === stv; S.filters.term = on ? "" : t.dataset.due; S.filters.state = on ? "" : stv; if (!on) { S.collapsed = {}; } return renderAll(); }
+    if (t.id === "btnClear" || t.id === "btnClear2") return clearFilters();
+    if (t.id === "sPrev") return stepSheet(-1);
+    if (t.id === "sNext") return stepSheet(1);
+    if (t.dataset.kpi !== undefined) { S.filters.state = t.dataset.kpi === "" ? "" : (S.filters.state === t.dataset.kpi ? "" : t.dataset.kpi); if (t.dataset.kpi === "") { S.filters.prog = ""; S.filters.term = ""; } return renderAll(); }
     if (t.dataset.prog !== undefined) { S.filters.prog = S.filters.prog === t.dataset.prog ? "" : t.dataset.prog; return renderAll(); }
     if (t.dataset.scope) { S.scope = t.dataset.scope; return renderAll(); }
     if (t.id === "btnScan") return scanSharePoint({ prog: $("scanProg").value, full: $("scanFull").checked });
@@ -1184,7 +1485,16 @@ if (typeof module !== "undefined") module.exports = CF;
       return;
     }
     if (t.dataset.addc) { var sel = $("cSec"); if (sel) { sel.value = t.dataset.addc; $("cText").focus(); } return; }
-    if (t.id === "cPost") { var tx = $("cText").value.trim(); if (!tx) return; addComment(c, $("cSec").value, tx).then(function () { var el = $("cText"); if (el) el.value = ""; }); return; }
+    if (t.id === "cPost") {
+      var tx = $("cText").value.trim(); if (!tx) return;
+      var pr = S._preset && S._preset.text === tx ? S._preset : null, secv = $("cSec").value;
+      addComment(c, secv, tx, null, pr && (pr.accept || pr.note) ? "note" : null).then(function () {
+        var el = $("cText"); if (el) el.value = ""; var ps = $("cPreset"); if (ps) ps.value = "";
+        if (pr && pr.accept && +secv) { var accs = Object.assign({}, c.accepted || {}); accs[secv] = { at: nowISO(), by: S.me, why: pr.id }; upd(c.id, { accepted: accs }).then(function () { toast("Comment added and item " + secv + " accepted as done"); }); }
+        S._preset = null;
+      });
+      return;
+    }
     if (t.dataset.cstat) { S.db.collection("comments").doc(t.dataset.cid).update({ status: t.dataset.cstat, statusAt: nowISO(), statusBy: S.me }).then(function () { toast(t.dataset.cstat === "fixed" ? "Reviewer will recheck this item" : "Updated"); }).catch(function () { toast("Could not update the comment."); }); return; }
     if (t.dataset.cdel) {
       if (t.dataset.confirm !== "1") { t.dataset.confirm = "1"; t.textContent = "Confirm delete"; return; }
@@ -1204,12 +1514,18 @@ if (typeof module !== "undefined") module.exports = CF;
     if (t.id === "eMark") { var to = $("eTo").value.trim(); upd(c.id, { emailedAt: nowISO(), email: to || c.email || "" }).then(function () { toast("Recorded as emailed"); }); return; }
   });
   document.addEventListener("keydown", function (ev) {
-    if (ev.key === "Escape" && S.open) closeSheet();
-    if (ev.key === "Enter" && ev.target.matches && ev.target.matches("tr[data-id]")) openSheet(ev.target.dataset.id);
+    var typing = ev.target.matches && ev.target.matches("input, textarea, select, [contenteditable]");
+    if (ev.key === "Escape" && S.open) { if (typing && ev.target.value) return; closeSheet(); return; }
+    if (ev.key === "Enter" && ev.target.matches && ev.target.matches("tr[data-id]")) { openSheet(ev.target.dataset.id); return; }
+    if (typing || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    if ((ev.key === "ArrowDown" || ev.key === "ArrowUp") && S.open && S.open.indexOf("__") !== 0) { ev.preventDefault(); stepSheet(ev.key === "ArrowDown" ? 1 : -1); return; }
+    if ((ev.key === "ArrowDown" || ev.key === "ArrowUp") && !S.open && ev.target.matches && ev.target.matches("tr[data-id]")) {
+      ev.preventDefault(); var rs = Array.prototype.slice.call(document.querySelectorAll("#rows tr[data-id]")), ri = rs.indexOf(ev.target), nx = rs[ri + (ev.key === "ArrowDown" ? 1 : -1)]; if (nx) nx.focus();
+    }
   });
   document.addEventListener("input", function (ev) {
     if (["eTo", "eCc", "eSubj", "eBody"].indexOf(ev.target.id) >= 0) syncOutlook();
-    if (ev.target.id === "fText") { S.filters.text = ev.target.value; renderSummary(); renderGrid(); }
+    if (ev.target.id === "fText") { S.filters.text = ev.target.value; renderGrid(); $("btnClear").hidden = !filtersActive(); var b0 = semCourses().filter(function (c) { return S.scope !== "mine" || mine(c); }).length, v0 = visible().length; $("countLine").textContent = v0 === b0 ? b0 + " course files" : "Showing " + v0 + " of " + b0; }
   });
   document.addEventListener("change", function (ev) {
     var id = ev.target.id;
@@ -1223,6 +1539,7 @@ if (typeof module !== "undefined") module.exports = CF;
     else if (id === "fInst") S.filters.inst = ev.target.value;
     else if (ev.target.dataset && ev.target.dataset.remf) { S.remF[ev.target.dataset.remf] = ev.target.checked; renderReminders(); return; }
     else if (id === "impFile") { if (ev.target.files[0]) { $("settingsPanel").hidden = true; importSchedule(ev.target.files[0]); ev.target.value = ""; } return; }
+    else if (id === "cPreset") { var pp = PRESETS.filter(function (p) { return p.id === ev.target.value; })[0]; S._preset = pp || null; if (pp) { $("cText").value = pp.text; if (pp.sec) $("cSec").value = String(pp.sec); } return; }
     else if (id === "mTerm") { var c = course(S.open); if (c) upd(c.id, { term: ev.target.value }).then(function () { toast("Term saved"); }); return; }
     else return;
     renderAll();
@@ -1665,12 +1982,13 @@ if (typeof module !== "undefined") module.exports = CF;
           sc.assessments.map(function (a) { return [{ t: a.name, bold: true }, yn(a.ins), yn(a.key), cnt(a.h), cnt(a.m), cnt(a.l)]; }));
       }
       if ((sc.issues || []).length) { heading("Found by the automatic check"); sc.issues.forEach(function (x) { para("•  " + x, 9, F.r, C.ink, 4); }); gap(6); }
+      if ((sc.notes || []).length) { heading("Notes (accepted, no action needed)"); sc.notes.forEach(function (x) { para("•  " + x, 9, F.r, C.muted, 4); }); gap(6); }
       if (m.opts.comments) {
         var cms = m.comments(c);
         heading("Review comments");
         if (!cms.length) para("No comments recorded.", 9, F.i, C.muted);
         else table([{ h: "Date", w: 56 }, { h: "Folder", w: 72 }, { h: "From", w: 78 }, { h: "Status", w: 66 }, { h: "Comment", w: CW - 272 }], cms.map(function (x) {
-          return [fmtDate((x.at || "").slice(0, 10)), x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", personName(x.by) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), x.kind === "issue" && !x.parent ? { t: { open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "", pill: { open: "miss", fixed: "part", resolved: "ok" }[x.status] || "none" } : "", x.text || ""];
+          return [fmtDate((x.at || "").slice(0, 10)), x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", authorName(x) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), x.kind === "issue" && !x.parent ? { t: { open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "", pill: { open: "miss", fixed: "part", resolved: "ok" }[x.status] || "none" } : "", x.text || ""];
         }));
       }
     });
@@ -1839,13 +2157,13 @@ if (typeof module !== "undefined") module.exports = CF;
     if (m.opts.comments) {
       var co = new XSheet("Comments"); co.cols = [30, 24, 13, 18, 24, 14, 80]; co.freeze = 1;
       co.row(["Course file", "Instructor", "Date", "Folder", "From", "Status", "Comment"].map(function (h) { return { v: h, s: XS.head }; }), 22);
-      m.files.forEach(function (c) { m.comments(c).forEach(function (x) { var stw = x.kind === "issue" && !x.parent ? ({ open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "") : ""; co.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: fmtDate((x.at || "").slice(0, 10)), s: XS.center }, { v: x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", s: XS.body }, { v: personName(x.by) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), s: XS.body }, stw ? stCell(stw, { Open: "miss", "Says fixed": "part", Resolved: "ok" }[stw]) : { v: "", s: XS.center }, { v: x.text || "", s: XS.body }]); }); });
+      m.files.forEach(function (c) { m.comments(c).forEach(function (x) { var stw = x.kind === "issue" && !x.parent ? ({ open: "Open", fixed: "Says fixed", resolved: "Resolved" }[x.status] || "") : ""; co.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: fmtDate((x.at || "").slice(0, 10)), s: XS.center }, { v: x.parent ? "Reply" : x.sec ? x.sec + ". " + CF.SECTIONS[x.sec - 1].short : "Whole file", s: XS.body }, { v: authorName(x) + (x.role === "lead" ? " (reviewer)" : " (instructor)"), s: XS.body }, stw ? stCell(stw, { Open: "miss", "Says fixed": "part", Resolved: "ok" }[stw]) : { v: "", s: XS.center }, { v: x.text || "", s: XS.body }]); }); });
       if (co.rows.length === 1) co.row([{ v: "No comments recorded.", s: XS.body }]);
       sheets.push(co);
     }
     var fd = new XSheet("Findings"); fd.cols = [30, 24, 100]; fd.freeze = 1;
     fd.row(["Course file", "Instructor", "Found by the automatic check"].map(function (h) { return { v: h, s: XS.head }; }), 22);
-    m.files.forEach(function (c) { (scan(c).issues || []).forEach(function (x) { fd.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: x, s: XS.body }]); }); });
+    m.files.forEach(function (c) { (scan(c).issues || []).forEach(function (x) { fd.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: x, s: XS.body }]); }); (scan(c).notes || []).forEach(function (x) { fd.row([{ v: fileName(c), s: XS.bold }, { v: c.instructor || "", s: XS.body }, { v: "Note (accepted, no action needed): " + x, s: XS.body }]); }); });
     if (fd.rows.length === 1) fd.row([{ v: "Nothing found.", s: XS.body }]);
     sheets.push(fd);
     return writeXLSX(sheets, { title: m.kicker + " — " + m.title, author: m.reviewer });
@@ -1885,9 +2203,9 @@ if (typeof module !== "undefined") module.exports = CF;
       L.push("• " + c.course + (c.section && !/,/.test(c.section) ? " (" + c.section + ")" : "") + " — " + stateLabel(dstate(c)) + (dueFor(c) ? ", due " + fmtDate(dueFor(c)) : "") + (sc.state !== "not_started" ? ", " + sc.score + "% complete" : ""));
       if (sc.state === "not_started") L.push("   The folder is still empty.");
       else (sc.items || []).filter(function (i) { return i.s !== "ok"; }).forEach(function (i) { L.push("   - " + i.k + ". " + CF.SECTIONS[i.k - 1].short + ": " + i.note); });
-      L.push("   Graded samples needed: " + nd + " High, " + nd + " Medium, " + nd + " Low per assessment. Folder: " + folderUrl(c.path), "");
+      L.push((sampleShort(c) ? "   Graded samples needed: " + nd + " High, " + nd + " Medium, " + nd + " Low per assessment. " : "   ") + "Folder: " + folderUrl(c.path), "");
     });
-    L.push("Please also make sure each syllabus states the section and campus.");
+    if (g.files.some(function (c) { return syllabusShort(c) && !(c.accepted && c.accepted[2]); })) L.push("Please also make sure each syllabus states the section and campus.");
     if (S.config.link) L.push("You can follow your course file status here: " + S.config.link);
     return L.join("\n");
   }
@@ -1974,7 +2292,7 @@ if (typeof module !== "undefined") module.exports = CF;
   function renderImport() {
     S._panelIs = "imp";
     var I = S._imp, h = '<p class="note" style="margin:0">' + esc(I.file) + ": " + I.n + " Education class lines read and compared with Folio.</p>";
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">Updates to apply (' + I.updates.length + ")</h3>";
+    h += '<section><h3>Updates to apply (' + I.updates.length + ")</h3>";
     if (!I.updates.length) h += '<p class="note">Class sizes, terms and campuses already match the schedule.</p>';
     else {
       h += '<div style="overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px"><table class="amx"><thead><tr><th></th><th>Course file</th><th>Students</th><th>Term</th><th>Campus</th></tr></thead><tbody>' + I.updates.map(function (u, i) {
@@ -1983,10 +2301,10 @@ if (typeof module !== "undefined") module.exports = CF;
       }).join("") + '</tbody></table></div><div class="actions"><button class="btn primary" type="button" id="impApply">Apply selected updates</button></div>';
     }
     h += "</section>";
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">On the schedule but no course file in Folio (' + I.missing.length + ")</h3>";
+    h += '<section><h3>On the schedule but no course file in Folio (' + I.missing.length + ")</h3>";
     h += I.missing.length ? I.missing.map(function (m, i) { return '<div class="cmt"><div class="h"><b>' + esc(m.code) + "</b><span>" + esc(m.name) + "</span><span>" + esc(Object.keys(m.camps).join(", ")) + " · " + m.enr + " student" + (m.enr === 1 ? "" : "s") + '</span></div><div class="acts"><button class="btn small" type="button" data-impadd="' + i + '">Add course file…</button></div></div>'; }).join("") : '<p class="note">None.</p>';
     h += '<p class="note" style="margin:0">A course may also be missing because its SharePoint folder uses a different code or instructor name. Check the folder before adding.</p></section>';
-    h += '<section style="display:grid;gap:8px"><h3 style="font-size:.95rem">In Folio but not on the schedule (' + I.notOn.length + ")</h3>";
+    h += '<section><h3>In Folio but not on the schedule (' + I.notOn.length + ")</h3>";
     h += I.notOn.length ? I.notOn.map(function (c) { return '<div class="cmt"><div class="h"><b>' + esc(c.course) + "</b><span>" + esc(c.instructor || c.section || "") + '</span></div><div class="acts"><button class="btn small" type="button" data-impopen="' + esc(c.id) + '">Open</button></div></div>'; }).join("") : '<p class="note">None.</p>';
     h += "</section>";
     sheetModal("Schedule check", "Import schedule", h);

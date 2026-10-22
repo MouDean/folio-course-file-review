@@ -12,8 +12,10 @@ var CF = (function () {
   var TERM_RE = /(20\d\d)\s*[-_/ ]\s*(20)?(\d\d)/g;
   var YEAR_TAG = "2026-27";
 
+  // System / temporary files never count as uploaded work.
+  function isJunk(name) { return /^(desktop\.ini|thumbs\.db|\.ds_store)$/i.test(name || "") || /^~\$/.test(name || "") || /\.(url|lnk|tmp)$/i.test(name || ""); }
   function allFiles(n) {
-    var out = (n.files || []).slice();
+    var out = (n.files || []).filter(function (f) { return !isJunk(f.name); });
     (n.folders || []).forEach(function (f) { out = out.concat(allFiles(f)); });
     return out;
   }
@@ -49,8 +51,9 @@ var CF = (function () {
 
   var ROLE_INS = /instrument|brief|question|paper|task|guideline/i;
   var ROLE_KEY = /answer|marking|scheme|rubric|key|solution|worked/i;
-  var ROLE_GRD = /graded|sample|student\s*work|scripts/i;
-  var LV = [["h", /high/i], ["m", /medium|\bmed\b|mid/i], ["l", /\blow/i]];
+  var ROLE_GRD = /graded|sample|student|submission|scripts|marked/i;
+  // Level names: the model uses High / Medium / Low; common alternatives are accepted too.
+  var LV = [["h", /high|excellent|outstanding|\btop\b|\bbest\b/i], ["m", /medium|\bmed\b|\bmid\b|middle|average|moderate/i], ["l", /\blow|weak|poor|below/i]];
 
   function levelOf(name) {
     for (var i = 0; i < LV.length; i++) if (LV[i][1].test(name)) return LV[i][0];
@@ -63,6 +66,8 @@ var CF = (function () {
     if (ROLE_INS.test(name)) return "ins";
     return null;
   }
+  // Count graded files by level. Files sitting outside a level folder whose own name gives the level
+  // (e.g. "High - report.pdf") count for that level; anything else is "unsorted" graded work.
   function levels(node, acc) {
     (node.folders || []).forEach(function (f) {
       var l = levelOf(f.name);
@@ -71,27 +76,43 @@ var CF = (function () {
     });
     return acc;
   }
+  function unsorted(node) {
+    var n = 0;
+    (node.files || []).forEach(function (f) { if (isJunk(f.name)) return; var l = levelOf(f.name); if (!l) n++; });
+    (node.folders || []).forEach(function (f) { if (!levelOf(f.name)) n += unsorted(f); });
+    return n;
+  }
+  function looseLevels(node, acc) {
+    (node.files || []).forEach(function (f) { var l = !isJunk(f.name) && levelOf(f.name); if (l) acc[l]++; });
+    return acc;
+  }
   function checkAssessment(a) {
-    var r = { name: a.name, ins: 0, key: 0, h: 0, m: 0, l: 0, loose: 0 };
-    (a.files || []).forEach(function (f) {
+    var r = { name: a.name, ins: 0, key: 0, h: 0, m: 0, l: 0, loose: 0, unl: 0 };
+    (a.files || []).filter(function (f) { return !isJunk(f.name); }).forEach(function (f) {
       if (ROLE_KEY.test(f.name)) r.key++; else r.ins++;
       if (/rubric|guideline/i.test(f.name) && ROLE_KEY.test(f.name)) { /* instrument + rubric in one file */ r.ins = Math.max(r.ins, 1); }
     });
-    var graded = null;
+    var graded = null, other = [];
     (a.folders || []).forEach(function (f) {
       var role = roleOf(f.name);
       if (role === "ins") { r.ins += allFiles(f).length; allFiles(f).forEach(function (x) { if (/key|answer|rubric|marking/i.test(x.name)) r.key++; }); }
       else if (role === "key") r.key += allFiles(f).length;
       else if (role === "grd") graded = f;
+      else if (role !== "lvl") other.push(f);
     });
     var lv = levels(graded || a, { h: 0, m: 0, l: 0 });
+    if (graded) looseLevels(graded, lv);
     r.h = lv.h; r.m = lv.m; r.l = lv.l;
-    if (graded) r.loose = (graded.files || []).length;
+    // Graded work that is uploaded but not sorted or named by level (e.g. files named after the student).
+    if (graded) { r.unl = unsorted(graded); r.loose = r.unl; }
+    else other.forEach(function (f) { r.unl += allFiles(f).length; });
+    // A rubric or answer key anywhere in the assessment counts, whatever folder it is in.
+    if (!r.key && allFiles(a).some(function (x) { return /rubric|answer|marking|\bkey\b/i.test(x.name); })) r.key = 1;
     return r;
   }
 
   function evaluate(root) {
-    var items = [], issues = [], assessments = [];
+    var items = [], issues = [], notes = [], assessments = [];
     var total = allFiles(root).length;
     SECTIONS.forEach(function (s) {
       var f = findSection(root, s);
@@ -138,9 +159,11 @@ var CF = (function () {
             if (!a.ins) miss.push("assessment instrument");
             if (!a.key) miss.push("answer key / marking scheme or rubric");
             var lv = []; if (!a.h) lv.push("High"); if (!a.m) lv.push("Medium"); if (!a.l) lv.push("Low");
+            // Unsorted graded files (e.g. named after the student) cover levels that have no folder of their own.
+            if (lv.length && a.unl >= lv.length) { notes.push(a.name + ": " + plural(a.unl, "graded file") + " uploaded but not sorted or named by level (e.g. named after the student). Accepted as uploaded."); lv = []; }
+            else if (!lv.length && a.unl) notes.push(a.name + ": " + plural(a.unl, "graded file") + " not placed in a High / Medium / Low folder. Accepted as uploaded.");
             if (lv.length) miss.push("graded sample: " + lv.join(", "));
             if (miss.length) gaps.push(a.name + ": missing " + miss.join("; ") + ".");
-            if (a.loose) issues.push(a.name + ": " + plural(a.loose, "graded file") + " not placed in a High / Medium / Low folder.");
           });
           it.s = gaps.length ? "part" : "ok";
           it.note = gaps.length ? gaps.length + " of " + assessments.length + " assessments incomplete." : plural(assessments.length, "assessment") + " with instrument, key/rubric and High, Medium and Low samples.";
@@ -166,7 +189,7 @@ var CF = (function () {
     var ok = items.filter(function (i) { return i.s === "ok"; }).length;
     var part = items.filter(function (i) { return i.s === "part"; }).length;
     var state = total === 0 ? "not_started" : (ok === 7 ? "complete" : "in_progress");
-    return { items: items, issues: issues, assessments: assessments.map(function (a) { return { name: a.name, ins: a.ins > 0, key: a.key > 0, h: a.h, m: a.m, l: a.l }; }), files: total, state: state, score: Math.round(((ok + part * 0.5) / 7) * 100) };
+    return { items: items, issues: issues, notes: notes, assessments: assessments.map(function (a) { return { name: a.name, ins: a.ins > 0, key: a.key > 0, h: a.h, m: a.m, l: a.l, unl: a.unl || 0 }; }), files: total, state: state, score: Math.round(((ok + part * 0.5) / 7) * 100) };
   }
 
   function emptyEval() {
