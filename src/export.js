@@ -9,7 +9,7 @@
   function fileSort(a, b) { return PROG_ORDER.indexOf(a.programShort) - PROG_ORDER.indexOf(b.programShort) || (a.course + a.section).localeCompare(b.course + b.section); }
   function secShown(c) { return c.section && !/,/.test(c.section) && c.section !== c.instructor ? c.section : ""; }
   function fileName(c) { return c.course + (secShown(c) ? " · " + secShown(c) : ""); }
-  function termShort(t) { return t === "Full semester" ? "Full" : t || "—"; }
+  function termShort(t) { return t === "Full semester" ? "Full" : t === "Short semester" ? "Short" : t || "—"; }
   function courseLabel(c) { return fileName(c) + (c.instructor ? " — " + c.instructor : ""); }
   function expTargets(scope) {
     var cs = semCourses().slice().sort(fileSort);
@@ -69,7 +69,7 @@
       var sc0 = scan(c0), rv = (c0.review || {}).status || "pending";
       m.kicker = "Course file review report"; m.title = fileName(c0);
       m.subtitle = (c0.instructor || "Instructor not set") + " · " + c0.programShort;
-      m.meta = [["Program", c0.programShort], ["Course", c0.course], ["Section / folder", c0.section || "—"], ["Instructor", c0.instructor || "—"], ["Email", c0.email || "—"], ["Term", c0.term || "—"], ["Due date", dueFor(c0) ? fmtDate(dueFor(c0)) : "—"], ["Class size", c0.enrolled ? c0.enrolled + " students" : "Not recorded"], ["Semester", m.sem], ["Reviewer decision", { pending: "Not reviewed yet", approved: "Approved", revise: "Needs revision" }[rv] + ((c0.review || {}).at ? " (" + fmtDate(c0.review.at.slice(0, 10)) + ")" : "")]];
+      m.meta = [["Program", c0.programShort], ["Course", c0.course], ["Section / folder", c0.section || "—"], ["Instructor", c0.instructor || "—"], ["Email", c0.email || "—"], ["Term", eTerm(c0) || "—"], ["Due date", dueFor(c0) ? fmtDate(dueFor(c0)) : "—"], ["Class size", c0.enrolled ? c0.enrolled + " students" : "Not recorded"], ["Semester", m.sem], ["Reviewer decision", { pending: "Not reviewed yet", approved: "Approved", revise: "Needs revision" }[rv] + ((c0.review || {}).at ? " (" + fmtDate(c0.review.at.slice(0, 10)) + ")" : "")]];
       var met = (sc0.items || []).filter(function (i) { return i.s === "ok"; }).length;
       m.kpis = [["Completion", sc0.score + "%", STATE_COL[dstate(c0)]], ["Items met", (sc0.state === "not_started" ? 0 : met) + " of 7", XC.ink], ["Status", stateLabel(dstate(c0)), STATE_COL[dstate(c0)]], ["Open comments", String(openComments(c0.id).length), openComments(c0.id).length ? XC.miss : XC.ink]];
     } else {
@@ -308,7 +308,7 @@
       var tot = cols.reduce(function (a, c) { return a + c.w; }, 0); cols[cols.length - 1].w += CW - tot;
       table(cols, m.files.map(function (c) {
         var sc = scan(c), st = dstate(c), rv = (c.review || {}).status || "pending";
-        return [{ t: fileName(c), bold: true }].concat(showInst ? [c.instructor || "—"] : []).concat([termShort(c.term), dueFor(c) ? fmtDate(dueFor(c)) : "—", { t: stateLabel(st), pill: st }, { t: sc.score + "%", bold: true }, { dots: CF.SECTIONS.map(function (s) { return itemState(sc, s.k).s; }) }, { approved: "Approved", revise: "Revise", pending: "—" }[rv]]);
+        return [{ t: fileName(c), bold: true }].concat(showInst ? [c.instructor || "—"] : []).concat([termShort(eTerm(c)), dueFor(c) ? fmtDate(dueFor(c)) : "—", { t: stateLabel(st), pill: st }, { t: sc.score + "%", bold: true }, { dots: CF.SECTIONS.map(function (s) { return itemState(sc, s.k).s; }) }, { approved: "Approved", revise: "Revise", pending: "—" }[rv]]);
       }));
     }
 
@@ -316,7 +316,7 @@
     var detail = m.scope === "course" || m.opts.detail;
     if (detail) m.files.forEach(function (c, fi) {
       var sc = scan(c), st = dstate(c), nd = need(c);
-      if (m.scope !== "course") { newPage(); txt("COURSE FILE " + (fi + 1) + " OF " + m.files.length, M, y - 9, 8, F.b, C.accent); gap(14); wrap(fileName(c), F.b, 16, CW).forEach(function (l) { txt(l, M, y - 15, 16, F.b, C.ink); gap(20); }); para([c.instructor || "Instructor not set", c.programShort, c.term || "Term not set", dueFor(c) ? "Due " + fmtDate(dueFor(c)) : "", stateLabel(st) + " · " + sc.score + "%", { pending: "Not reviewed yet", approved: "Approved by the reviewer", revise: "Needs revision" }[(c.review || {}).status || "pending"]].filter(Boolean).join("   ·   "), 8.8, F.r, C.muted); gap(4); }
+      if (m.scope !== "course") { newPage(); txt("COURSE FILE " + (fi + 1) + " OF " + m.files.length, M, y - 9, 8, F.b, C.accent); gap(14); wrap(fileName(c), F.b, 16, CW).forEach(function (l) { txt(l, M, y - 15, 16, F.b, C.ink); gap(20); }); para([c.instructor || "Instructor not set", c.programShort, eTerm(c) || "Term not set", dueFor(c) ? "Due " + fmtDate(dueFor(c)) : "", stateLabel(st) + " · " + sc.score + "%", { pending: "Not reviewed yet", approved: "Approved by the reviewer", revise: "Needs revision" }[(c.review || {}).status || "pending"]].filter(Boolean).join("   ·   "), 8.8, F.r, C.muted); gap(4); }
       heading("Checklist against the model course file");
       table([{ h: "#", w: 18, align: "center" }, { h: "Item", w: 128 }, { h: "Result", w: 66 }, { h: "Finding", w: CW - 212 }], CF.SECTIONS.map(function (s) {
         var it = itemState(sc, s.k); return [String(s.k), { t: s.label, bold: true }, { t: ITEM_WORD[it.s], pill: it.s }, it.s === "none" && !isOverdue(c) ? "Nothing uploaded yet. Not due until " + (dueFor(c) ? fmtDate(dueFor(c)) : "the end of the term") + "." : it.note];
@@ -487,7 +487,7 @@
     cf.row(hdr.map(function (h) { return { v: h, s: XS.head }; }), 30);
     m.files.forEach(function (c) {
       var sc = scan(c), st = dstate(c), rv = (c.review || {}).status || "pending";
-      cf.row([{ v: c.programShort, s: XS.body }, { v: c.course, s: XS.bold }, { v: c.section || "", s: XS.body }, { v: c.instructor || "", s: XS.body }, { v: c.email || "", s: XS.body }, { v: c.term || "", s: XS.center }, { v: dueFor(c) ? fmtDate(dueFor(c)) : "", s: XS.center }, { v: +c.enrolled || "", s: XS.center }, { v: need(c), s: XS.center }, stCell(stateLabel(st), st), { v: sc.score / 100, s: XS.pct }]
+      cf.row([{ v: c.programShort, s: XS.body }, { v: c.course, s: XS.bold }, { v: c.section || "", s: XS.body }, { v: c.instructor || "", s: XS.body }, { v: c.email || "", s: XS.body }, { v: eTerm(c) || "", s: XS.center }, { v: dueFor(c) ? fmtDate(dueFor(c)) : "", s: XS.center }, { v: +c.enrolled || "", s: XS.center }, { v: need(c), s: XS.center }, stCell(stateLabel(st), st), { v: sc.score / 100, s: XS.pct }]
         .concat(CF.SECTIONS.map(function (s) { var it = itemState(sc, s.k); return stCell(ITEM_WORD[it.s], it.s); }))
         .concat([stCell({ pending: "Not reviewed", approved: "Approved", revise: "Needs revision" }[rv], { pending: "none", approved: "ok", revise: "miss" }[rv]), { v: openComments(c.id).length, s: XS.center }]));
     });

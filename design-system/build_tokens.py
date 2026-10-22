@@ -54,8 +54,8 @@ def build_css():
 def check_top():
     """Compare the colour variables in src/top.html (light :root block and dark block) with tokens.json."""
     html = TOP.read_text(encoding="utf-8")
-    light_block = re.search(r":root\{([^}]*)\}", html).group(1)
-    dark_block = re.search(r':root\[data-theme="dark"\]\{([^}]*)\}', html).group(1)
+    light_block = re.findall(r"\n:root\{([^}]*)\}", html)[-1]  # the last :root block is the active identity
+    dark_block = re.findall(r':root\[data-theme="dark"\]\{([^}]*)\}', html)[-1]
     problems = 0
     for theme, block in (("light", light_block), ("dark", dark_block)):
         page = {k: v.strip().upper() for k, v in re.findall(r"--([a-z0-9-]+):\s*(#[0-9A-Fa-f]{3,8})", block)}

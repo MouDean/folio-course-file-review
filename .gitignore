@@ -7,4 +7,4 @@ __pycache__/
 scans*.json
 test*.html
 .DS_Store
-backup_v01/
+backup_v*/

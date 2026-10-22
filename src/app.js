@@ -5,7 +5,11 @@
   var SITE = "https://studentsaduac.sharepoint.com";
   var LIB = "/sites/CAS_CourseFiles/Shared Documents";
   var DEPT = "Department of Education";
-  var TERMS = ["Term A", "Term B", "Full semester"];
+  var TERMS_LONG = ["Term A", "Term B", "Full semester"], SHORT = "Short semester";
+  // Winter and Summer are short six-week semesters: no Term A / Term B, one due date for every course file.
+  function isShort(k) { return /\/(Winter|Summer)$/.test(k || semKey()); }
+  function terms() { return isShort() ? [SHORT] : TERMS_LONG; }
+  function eTerm(c) { return isShort(c.semester || semKey()) ? SHORT : c.term; }
 
   var S = {
     db: null, user: null, mcp: null, isLead: false, me: null, myEmail: "",
@@ -51,7 +55,48 @@
     if (!$("settingsPanel").hidden) fillSettings();
     renderAll(); toast("Showing " + semLabelOf(k));
   }
-  function basePath() { return LIB + "/" + semKey() + "/" + DEPT; }
+  // Each semester has its own SharePoint folder, saved in Settings (config.spBySem). Fall 2026-27 keeps its original folder if none is saved.
+  function spFor(k) { var b = S.config.spBySem || {}; k = k || semKey(); return b[k] || null; }
+  function defaultBase(k) { return LIB + "/" + (k || semKey()) + "/" + DEPT; }
+  function basePath() { var sp = spFor(); return sp && sp.path ? sp.path : defaultBase(); }
+  function hasFolder() { return !!spFor() || semKey() === FALL26; }
+  function driveUri(path) { return "file:///" + DRIVE + "/" + path.slice(LIB.length + 1); }
+  // Turn a SharePoint address (browser bar, "Copy link" with /:f:/r/, or a server-relative path) into the folder's path in the course-files library.
+  function parseSpLink(raw) {
+    var u = String(raw || "").trim(), path = "";
+    if (!u) return { err: "Paste the folder address first." };
+    if (/sharepoint\.com\/:[a-z]:\/[sg]\//i.test(u)) return { err: "This is a sharing link, which Folio cannot follow. Open the folder in SharePoint and copy the address from the browser bar instead." };
+    var m = /[?&]id=([^&#]+)/.exec(u);
+    if (m) path = decodeURIComponent(m[1].replace(/\+/g, " "));
+    else if ((m = /sharepoint\.com\/:[a-z]:\/r(\/sites\/[^?#]+)/i.exec(u))) path = decodeURIComponent(m[1]);
+    else if ((m = /sharepoint\.com(\/sites\/[^?#]+)/i.exec(u))) path = decodeURIComponent(m[1]);
+    else if (/^\/sites\//.test(u)) path = u;
+    else return { err: "That does not look like a SharePoint folder address." };
+    path = path.replace(/\/+$/, "").replace(/\/Forms\/AllItems\.aspx$/i, "");
+    if (path.toLowerCase().indexOf(LIB.toLowerCase() + "/") !== 0) return { err: "The folder must be in the course-files library (" + LIB + "). This link points somewhere else." };
+    path = LIB + path.slice(LIB.length);
+    return { path: path };
+  }
+  // A link whose path names a different semester (e.g. "Fall" while you are viewing Spring) is refused.
+  function semMismatch(path, k) {
+    var p = k.split("/"), segs = path.slice(LIB.length + 1).split("/"), other = SEMS.filter(function (x) { return x !== p[1]; });
+    var bad = segs.filter(function (x) { return other.some(function (o) { return new RegExp("^" + o + "$", "i").test(x.trim()); }); })[0];
+    var yr = segs.filter(function (x) { return /20\d\d\s*-\s*20\d\d/.test(x); })[0];
+    if (bad) return "This link is for a " + bad.trim() + " folder, but you are setting up " + semLabelOf(k) + ".";
+    if (yr && yr.replace(/\s/g, "") !== p[0].replace(/\s/g, "")) return "This link is for " + yr.trim() + ", but you are setting up " + semLabelOf(k) + ".";
+    return "";
+  }
+  async function checkSpLink(raw) {
+    var k = semKey(), r = parseSpLink(raw); if (r.err) return r;
+    var mm = semMismatch(r.path, k); if (mm) return { err: mm + " Switch to that semester with the menu at the top, or paste this semester's link." };
+    if (!S.mcp) return { err: "Checking the link needs the Microsoft 365 connector." };
+    var list; try { list = await listWithRetry(driveUri(r.path)); } catch (e) { return { err: "SharePoint could not open that folder (" + esc((e && e.code) || "error") + "). Check the address and your access." }; }
+    var dept = list.folders.filter(function (f) { return f.name.trim().toLowerCase() === DEPT.toLowerCase(); })[0];
+    if (dept) { r.path += "/" + dept.name; try { list = await listWithRetry(driveUri(r.path)); } catch (e) { return { err: "SharePoint could not open the Department of Education folder inside that link." }; } }
+    var progs = list.folders.map(function (f) { return f.name; });
+    if (!progs.length) return { err: "That folder has no sub-folders. Folio expects the Department of Education folder, with one folder per program." };
+    return { path: r.path, programs: progs, link: String(raw).trim() };
+  }
   function folderUrl(path) { return SITE + "/sites/CAS_CourseFiles/Shared%20Documents/Forms/AllItems.aspx?id=" + encodeURIComponent(path); }
   function banner(kind, html) { var b = $("banner"); if (!html) { b.hidden = true; return; } b.className = "banner " + (kind || ""); b.innerHTML = html; b.hidden = false; }
 
@@ -122,7 +167,7 @@
     { id: "missing", sec: 0, accept: false, text: "Please upload the missing item(s) listed in this course file." }
   ];
   function openComments(cid) { return S.comments.filter(function (m) { return m.courseId === cid && m.kind === "issue" && m.status !== "resolved"; }); }
-  function dueFor(c) { var d = semDue(); return c.term === "Term A" ? d.A : c.term === "Term B" ? d.B : c.term === "Full semester" ? d.F : ""; }
+  function dueFor(c) { var d = semDue(), t = eTerm(c); return t === SHORT ? d.F || "" : t === "Term A" ? d.A : t === "Term B" ? d.B : t === "Full semester" ? d.F : ""; }
   // Display status: an empty course file is fine until its due date.
   function dstate(c) { var s = scan(c).state; if (s !== "not_started") return s; return isOverdue(c) ? "overdue" : "not_due"; }
   function isOverdue(c) { var d = dueFor(c); return d && scan(c).state !== "complete" && new Date(d + "T23:59:59") < new Date(); }
@@ -146,7 +191,7 @@
     return semCourses().filter(function (c) {
       if (S.scope === "mine" && !mine(c)) return false;
       if (f.prog && c.programShort !== f.prog) return false;
-      if (f.term) { if (f.term === "-" ? c.term : c.term !== f.term) return false; }
+      if (f.term) { if (f.term === "-" ? eTerm(c) : eTerm(c) !== f.term) return false; }
       if (f.inst && (c.instructor || "") !== f.inst) return false;
       var st = scan(c).state, rv = (c.review || {}).status || "pending";
       if (f.state === "open" && !openComments(c.id).length) return false;
@@ -177,15 +222,49 @@
       var v = progs[p], w = function (x) { return (x / v.n * 100).toFixed(2) + "%"; };
       return '<button type="button" class="barrow" data-prog="' + esc(p) + '" aria-pressed="' + (S.filters.prog === p) + '" title="' + v.ok + " complete, " + v.part + " in progress, " + v.none + " nothing uploaded yet, " + v.appr + ' approved"><span class="lab">' + esc(p) + '</span><span class="pct"><b>' + v.ok + "</b> / " + v.n + " complete" + (v.appr ? " · " + v.appr + " approved" : "") + '</span><span class="stack">' + (v.ok ? '<i class="s-ok" style="width:' + w(v.ok) + '"></i>' : "") + (v.part ? '<i class="s-part" style="width:' + w(v.part) + '"></i>' : "") + "</span></button>";
     }).join("") : '<p class="note">No course files yet.</p>';
+    celebrate(base);
+  }
+
+  /* ---------- sound and celebration ---------- */
+  var AC = null;
+  function soundOn() { try { return localStorage.getItem("folio-sound") !== "off"; } catch (e) { return true; } }
+  function setSound(on, quiet) { try { localStorage.setItem("folio-sound", on ? "on" : "off"); } catch (e) {} var b = $("btnSound"); b.setAttribute("aria-pressed", on); b.textContent = on ? "Sound on" : "Sound off"; b.title = on ? "Sounds are on. Press to mute." : "Sounds are off. Press to turn them on."; if (on && !quiet) fx("click"); }
+  function tone(f, t0, dur, type, vol) {
+    var o = AC.createOscillator(), g = AC.createGain(); o.type = type || "sine"; o.frequency.setValueAtTime(f, AC.currentTime + t0);
+    g.gain.setValueAtTime(0.0001, AC.currentTime + t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, AC.currentTime + t0 + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + t0 + dur);
+    o.connect(g); g.connect(AC.destination); o.start(AC.currentTime + t0); o.stop(AC.currentTime + t0 + dur + 0.05);
+  }
+  // Short synthesized cues (no audio files): success chime, approve, click, error.
+  function fx(kind) {
+    if (!soundOn()) return;
+    try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === "suspended") AC.resume(); } catch (e) { return; }
+    if (kind === "success") { tone(659.3, 0, 0.35, "sine", 0.14); tone(987.8, 0.12, 0.5, "sine", 0.12); tone(1318.5, 0.24, 0.6, "triangle", 0.05); }
+    else if (kind === "approve") { tone(784, 0, 0.18, "sine", 0.1); tone(1174.7, 0.07, 0.28, "sine", 0.08); }
+    else if (kind === "error") { tone(329.6, 0, 0.3, "triangle", 0.12); tone(246.9, 0.16, 0.45, "triangle", 0.1); }
+    else if (kind === "party") { [523.3, 659.3, 784, 1046.5].forEach(function (f, i) { tone(f, i * 0.08, 0.4, "triangle", 0.08); }); }
+    else tone(1400, 0, 0.05, "square", 0.025);
+  }
+  function scanDone(ok) { fx(ok ? "success" : "error"); }
+  function celebrate(base) {
+    if (!base.length || !S.db) return;
+    var key = "folio-cele-" + semKey(), done; try { done = JSON.parse(localStorage.getItem(key) || "[]"); } catch (e) { done = []; }
+    var groups = {}; base.forEach(function (c) { (groups[c.programShort] = groups[c.programShort] || []).push(c); });
+    var hits = Object.keys(groups).filter(function (p) { return groups[p].every(function (c) { return scan(c).state === "complete"; }); });
+    if (base.every(function (c) { return (c.review || {}).status === "approved"; })) hits.push("__all_approved");
+    var fresh = hits.filter(function (h) { return done.indexOf(h) < 0; });
+    if (!fresh.length) return;
+    try { localStorage.setItem(key, JSON.stringify(done.concat(fresh))); } catch (e) {}
+    fx("party");
+    toast(fresh.indexOf("__all_approved") >= 0 ? "Every course file in " + semLabel() + " is approved!" : fresh[0] + " is 100% complete!");
   }
 
   /* ---------- render: due-date strip ---------- */
   function renderDue() {
     var box = $("dueStrip"), d = semDue(), base = semCourses().filter(function (c) { return S.scope !== "mine" || mine(c); });
-    var defs = [["A", "Term A"], ["B", "Term B"], ["F", "Full semester"]], cards = [];
+    var defs = isShort() ? [["F", SHORT]] : [["A", "Term A"], ["B", "Term B"], ["F", "Full semester"]], cards = [];
     defs.forEach(function (x) {
       var date = d[x[0]]; if (!date) return;
-      var cs = base.filter(function (c) { return c.term === x[1]; }); if (!cs.length) return;
+      var cs = base.filter(function (c) { return eTerm(c) === x[1]; }); if (!cs.length) return;
       var left = cs.filter(function (c) { return scan(c).state !== "complete"; }).length, days = daysTo(date);
       if (days < -30) return;
       cards.push({ term: x[1], date: date, days: days, n: cs.length, left: left });
@@ -198,7 +277,7 @@
       var when = x.left === 0 ? "All complete" : x.days < 0 ? Math.abs(x.days) + " day" + (Math.abs(x.days) === 1 ? "" : "s") + " overdue" : x.days === 0 ? "Due today" : x.days === 1 ? "Due tomorrow" : "In " + x.days + " days";
       var on = S.filters.term === x.term && S.filters.state === (x.days < 0 ? "overdue" : "incomplete");
       var line = x.left === 0 ? "All " + x.n + " course files are complete." : x.left + " of " + x.n + " course file" + (x.n === 1 ? "" : "s") + " not complete yet" + (x.days < 0 ? "" : ". Click to list them.");
-      return '<button type="button" class="due ' + cls + '" data-due="' + esc(x.term) + '" data-late="' + (x.days < 0 ? 1 : 0) + '" aria-pressed="' + on + '"' + (x.left === 0 ? " disabled" : "") + '><span class="cal"><i>' + dt.toLocaleDateString("en-GB", { month: "short" }) + "</i><b>" + dt.getDate() + '</b></span><span class="txt"><b>' + esc(x.term) + " due " + esc(fmtDate(x.date)) + "</b><span>" + esc(line) + '</span></span><span class="when">' + when + "</span></button>";
+      return '<button type="button" class="due ' + cls + '" data-due="' + esc(x.term) + '" data-late="' + (x.days < 0 ? 1 : 0) + '" aria-pressed="' + on + '"' + (x.left === 0 ? " disabled" : "") + '><span class="cal"><i>' + dt.toLocaleDateString("en-GB", { month: "short" }) + "</i><b>" + dt.getDate() + '</b></span><span class="txt"><b>' + esc(x.term === SHORT ? semLabel() + " (6 weeks)" : x.term) + " due " + esc(fmtDate(x.date)) + "</b><span>" + esc(line) + '</span></span><span class="when">' + when + "</span></button>";
     }).join("");
   }
 
@@ -212,7 +291,7 @@
   var RV_RANK = { revise: 0, pending: 1, approved: 2 };
   function sortVal(c, key) {
     if (key === "inst") return (c.instructor || "~").toLowerCase();
-    if (key === "term") return (c.term || "~") + "|" + (dueFor(c) || "9999");
+    if (key === "term") return (eTerm(c) || "~") + "|" + (dueFor(c) || "9999");
     if (key === "done") return scan(c).score;
     if (key === "review") { var rv = (c.review || {}).status || "pending"; return isReady(c) ? -1 : RV_RANK[rv]; }
     if (key === "cm") return openComments(c.id).length;
@@ -270,7 +349,7 @@
         html += '<tr data-id="' + esc(c.id) + '" tabindex="0"' + (S.open === c.id ? ' class="current"' : "") + ">" +
           '<td class="c-course"><div class="ccode">' + esc(code.main) + "</div>" + (code.rest.length ? '<div class="cx">with ' + esc(code.rest.join(", ")) + "</div>" : "") + (sub ? '<div class="csub">' + sub + "</div>" : "") + "</td>" +
           '<td class="c-inst">' + (c.instructor ? esc(c.instructor) : '<span class="muted">Not set</span>') + "</td>" +
-          '<td class="c-term">' + (c.term ? esc(c.term) : '<span class="muted">Term not set</span>') + (due ? "<small>due " + esc(fmtDate(due).replace(/ \d{4}$/, "")) + "</small>" : "") + "</td>" + cells + mcells +
+          '<td class="c-term">' + (eTerm(c) ? esc(eTerm(c) === SHORT ? "Short (6 wks)" : eTerm(c)) : '<span class="muted">Term not set</span>') + (due ? "<small>due " + esc(fmtDate(due).replace(/ \d{4}$/, "")) + "</small>" : "") + "</td>" + cells + mcells +
           '<td class="c-done">' + (sc.score ? '<div class="ring" style="--p:' + sc.score + ";--c:" + col + '" title="' + sc.score + '% done"><b>' + sc.score + "%</b></div>" : '<span class="zero">0%</span>') + "</td>" +
           '<td class="c-rev">' + reviewHTML(c) + "</td>" +
           '<td class="c-cm">' + (oc ? '<span class="cm">' + oc + " open</span>" : '<span class="muted">—</span>') + "</td></tr>";
@@ -285,7 +364,9 @@
     var insts = Array.from(new Set(cs.map(function (c) { return c.instructor; }).filter(Boolean))).sort();
     fillSelect($("fProg"), "All programs", progs, S.filters.prog);
     fillSelect($("fInst"), "All instructors", insts, S.filters.inst);
-    $("fTerm").value = S.filters.term; $("fState").value = S.filters.state;
+    var ft = $("fTerm"), want = terms().join("|");
+    if (ft.dataset.terms !== want) { ft.innerHTML = '<option value="">All terms</option>' + terms().map(function (t) { return "<option>" + t + "</option>"; }).join("") + (isShort() ? "" : '<option value="-">Term not set</option>'); ft.dataset.terms = want; if (terms().indexOf(S.filters.term) < 0) S.filters.term = ""; }
+    ft.value = S.filters.term; $("fState").value = S.filters.state;
     if ($("fText").value !== S.filters.text) $("fText").value = S.filters.text;
     $("btnClear").hidden = !filtersActive();
     var base = cs.filter(function (c) { return S.scope !== "mine" || mine(c); }).length, shown = visible().length;
@@ -297,7 +378,9 @@
     var so = semOptions(), ss = $("semSel"), cur = semKey();
     ss.innerHTML = so.map(function (o) { return '<option value="' + esc(o.k) + '"' + (o.k === cur ? " selected" : "") + ">" + esc(semLabelOf(o.k)) + (o.n ? " (" + o.n + ")" : "") + "</option>"; }).join("");
     var ls = semLastScan(), sl = $("scanLine");
-    sl.textContent = ls ? "Checked against SharePoint " + fmtDT(ls.at) : "Not scanned yet";
+    sl.innerHTML = (ls ? "Checked against SharePoint " + esc(fmtDT(ls.at)) : "Not scanned yet") + (hasFolder() ? "" : ' · <span class="where" style="color:var(--miss)">SharePoint folder not set</span>');
+    sl.title = hasFolder() ? "Scans read " + basePath().slice(LIB.length + 1) : "Set this semester's SharePoint folder in Settings";
+    $("btnScan").title = sl.title;
     sl.classList.toggle("stale", !ls || (Date.now() - new Date(ls.at)) > 3 * 86400000);
     $("leadActions").hidden = !S.isLead; $("scanBox").hidden = !S.isLead;
     var sp = $("scanProg"), cur = sp.value, pf = programFolders();
@@ -332,7 +415,7 @@
       '<label for="nSection">Instructor/section folder (optional)' + inp("nSection", "", "e.g. Politis,Yurgos") + "</label>" +
       '<label for="nInst">Instructor' + inp("nInst", "", "Name") + "</label>" +
       '<label for="nEmail">Email' + inp("nEmail", "", "name@adu.ac.ae") + "</label>" +
-      '<label for="nTerm">Term<select id="nTerm"><option value="">Not set</option>' + TERMS.map(function (t) { return "<option>" + t + "</option>"; }).join("") + "</select></label>" +
+      '<label for="nTerm">Term<select id="nTerm"><option value="">Not set</option>' + terms().map(function (t) { return "<option" + (isShort() ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select></label>" +
       '<label for="nStud">Students<input id="nStud" type="number" min="0" placeholder="?"></label></div>' +
       '<p class="note">Use the exact folder names you use (or will use) on SharePoint, so the next scan links this course file to its folder. Folio does not create the SharePoint folder.</p>' +
       '<div class="actions"><button class="btn primary" type="button" id="nCreate">Add course file</button></div></div>';
@@ -348,7 +431,7 @@
     var cms = S.comments.filter(function (m) { return m.courseId === c.id; }).sort(function (a, b) { return (a.at || "").localeCompare(b.at || ""); });
     var issuesBySec = {}; cms.forEach(function (m) { if (m.kind === "issue" && m.status !== "resolved") issuesBySec[m.sec || 0] = (issuesBySec[m.sec || 0] || 0) + 1; });
     var lead = S.isLead;
-    var termSel = lead ? '<select id="mTerm" aria-label="Term"><option value="">Term not set</option>' + TERMS.map(function (t) { return "<option" + (c.term === t ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" : esc(c.term || "Term not set");
+    var termSel = lead ? '<select id="mTerm" aria-label="Term"><option value="">Term not set</option>' + terms().map(function (t) { return "<option" + (eTerm(c) === t ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select>" : esc(c.term || "Term not set");
     var instEd = lead ? '<div class="edit-grid"><input id="mInst" value="' + esc(c.instructor || "") + '" placeholder="Instructor name" aria-label="Instructor"><input id="mEmail" value="' + esc(c.email || "") + '" placeholder="email@adu.ac.ae" aria-label="Instructor email"><input id="mStud" type="number" min="0" value="' + esc(c.enrolled || "") + '" placeholder="Students" aria-label="Students" title="Students enrolled"><button class="btn small" type="button" id="mSave">Save</button></div>' : '<div class="meta">' + esc(c.instructor || "Instructor not set") + (c.email ? ' · <span class="copyable">' + esc(c.email) + "</span>" : "") + (c.enrolled ? " · " + esc(c.enrolled) + " students" : "") + "</div>";
     var pos = S.order.indexOf(c.id), code = splitCode(c.course);
     var nav = pos >= 0 ? '<button class="navb" type="button" id="sPrev" aria-label="Previous course file" title="Previous (↑)"' + (pos === 0 ? " disabled" : "") + '><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><span class="pos">' + (pos + 1) + " / " + S.order.length + '</span><button class="navb" type="button" id="sNext" aria-label="Next course file" title="Next (↓)"' + (pos === S.order.length - 1 ? " disabled" : "") + '><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>' : "";
@@ -596,11 +679,13 @@
     var done = 0, queued = 1, reusedN = 0;
     var show = function () { banner("", '<b>Reading SharePoint…</b><span class="note">' + done + " of " + queued + " folders" + (reusedN ? " · " + reusedN + " unchanged course files skipped" : "") + (Date.now() < cooldownUntil ? " · Microsoft asked us to slow down, pausing a few seconds" : "") + '</span><span class="progress"><i style="width:' + Math.round(done / Math.max(queued, 1) * 100) + '%"></i></span>'); };
     show();
-    var deptUri = "file:///" + DRIVE + "/" + semKey() + "/" + DEPT;
+    if (!hasFolder()) { banner("warn", "<b>No SharePoint folder is set for " + esc(semLabel()) + ".</b> <span>Open Settings and paste the link to this semester's Department of Education folder, so Folio does not read another semester's folder.</span>"); S.scanning = false; $("btnScan").disabled = false; return; }
+    var deptUri = driveUri(basePath());
     var single = opts.courseId ? course(opts.courseId) : null;
     var errors = 0;
     try {
       var tree = { name: DEPT, files: [], folders: [] }, errCodes = {}, startJob;
+      if (single && single.path.indexOf(basePath() + "/") !== 0) { var se = new Error("This course file was found in a different SharePoint folder from the one now set for " + semLabel() + ". Run a full scan of the semester."); se.code = "other_folder"; throw se; }
       if (single) {
         // Rescan one course file: build the path down to its folder and start there.
         var relS = single.path.slice(basePath().length + 1), parts = relS.split("/"), node = tree;
@@ -685,7 +770,7 @@
         if (ex) await col.doc(r.id).update(scanData);
         else {
           var nm = r.instructorFromFolder, p = people[(nm || "").toLowerCase()];
-          await col.doc(r.id).set(Object.assign(scanData, { instructor: p ? p.name : nm, email: p ? p.email : "", term: /diploma/i.test(r.program) ? "Full semester" : "", review: { status: "pending" } }));
+          await col.doc(r.id).set(Object.assign(scanData, { instructor: p ? p.name : nm, email: p ? p.email : "", term: isShort() ? SHORT : /diploma/i.test(r.program) ? "Full semester" : "", review: { status: "pending" } }));
         }
       }
       if (single && !rows.length) { banner("warn", "<b>The folder for this course file was not found on SharePoint.</b> <span>It may have been renamed or moved. Run a program scan to pick up the new name.</span>"); S.scanning = false; $("btnScan").disabled = false; return; }
@@ -713,14 +798,15 @@
         : single ? "<b>Course file rescanned.</b>"
         : "<b>Scan complete" + (opts.prog ? " for " + esc(CF.programShort(opts.prog)) : "") + ".</b> <span class=\"note\">" + updatedN + " course files checked, " + reusedN + " unchanged or approved and skipped, " + done + " folders read.</span>");
       setTimeout(function () { if (!errors) banner(); }, 7000);
+      scanDone(!errors);
     } catch (e) {
       var code = e && e.code;
       var msg = code === "server_not_connected" ? "Add the Microsoft 365 connector in claude.ai Settings → Connectors, then scan again."
         : code === "needs_reauth" ? "Reconnect Microsoft 365 in claude.ai Settings → Connectors, then scan again."
         : code === "not_in_manifest" || code === "approval_required" ? "This page needs your permission to read SharePoint through Microsoft 365. Press Scan again and choose Allow."
-        : code === "tool_error" ? (single ? "SharePoint could not open this course file's folder. It may have been renamed or moved." : "SharePoint could not open the " + esc(semKey()) + " Department of Education folder. Check the year and semester in Settings.")
+        : code === "tool_error" ? (single ? "SharePoint could not open this course file's folder. It may have been renamed or moved." : "SharePoint could not open the folder set for " + esc(semLabel()) + " (" + esc(basePath().slice(LIB.length + 1)) + "). Check the SharePoint folder link in Settings.")
         : "The scan stopped: " + esc(e && e.message || String(e));
-      banner("err", msg);
+      banner("err", msg); scanDone(false);
     }
     S.scanning = false; $("btnScan").disabled = false;
   }
@@ -747,7 +833,7 @@
     if (t.id === "expGo") return runExport();
     if (t.id === "btnRemind") return renderReminders();
     if (t.dataset.remcopy) { var gtxt = reminderBody(S._remGroups[+t.dataset.remcopy]); try { navigator.clipboard.writeText(gtxt).then(function () { toast("Copied"); }); } catch (e) {} return; }
-    if (t.dataset.remsent) { var gg = S._remGroups[+t.dataset.remsent]; Promise.all(gg.files.map(function (c) { return upd(c.id, { emailedAt: nowISO() }); })).then(function () { toast("Marked as sent"); }); return; }
+    if (t.dataset.remsent) { var gg = S._remGroups[+t.dataset.remsent]; Promise.all(gg.files.map(function (c) { return upd(c.id, { emailedAt: nowISO() }); })).then(function () { toast("Marked as sent"); fx("click"); }); return; }
     if (t.id === "impApply") return applyImport();
     if (t.dataset.impadd) return prefillAdd(S._imp.missing[+t.dataset.impadd]);
     if (t.dataset.impopen) { closeSheet(); return openSheet(t.dataset.impopen); }
@@ -755,13 +841,15 @@
     if (t.id === "btnAdd") { S.open = "__new"; $("sheet").hidden = false; $("scrim").hidden = false; renderAddSheet(); return; }
     if (t.id === "nCreate") return createCourse();
     if (t.dataset.restore) { upd(t.dataset.restore, { removed: false }).then(function () { toast("Restored"); fillSettings(); }); return; }
+    if (t.id === "btnSound") { setSound(!soundOn()); return; }
     if (t.id === "btnSettings") { var p = $("settingsPanel"); p.hidden = !p.hidden; fillSettings(); return; }
     if (t.id === "btnCloseSettings") { $("settingsPanel").hidden = true; return; }
     if (t.id === "btnSaveSettings") return saveSettings();
+    if (t.id === "spCheck") return runSpCheck();
     if (t.classList.contains("x")) return closeSheet();
     var c = course(S.open);
     if (!c) return;
-    if (t.dataset.review) { upd(c.id, { review: { status: t.dataset.review, at: nowISO(), by: S.me } }).then(function () { toast("Decision saved"); }); return; }
+    if (t.dataset.review) { var rvv = t.dataset.review; upd(c.id, { review: { status: rvv, at: nowISO(), by: S.me } }).then(function () { toast(rvv === "approved" ? "Course file approved" : "Decision saved"); fx(rvv === "approved" ? "approve" : "click"); }); return; }
     if (t.id === "dSave") { var pr = $("dProg").value; upd(c.id, { course: $("dCourse").value.trim() || c.course, section: $("dSection").value.trim(), program: pr, programShort: CF.programShort(pr) }).then(function () { toast("Details saved"); }); return; }
     if (t.id === "dRemove") {
       if (t.dataset.confirm !== "1") { t.dataset.confirm = "1"; t.textContent = "Click again to remove"; return; }
@@ -785,7 +873,7 @@
       });
       return;
     }
-    if (t.dataset.cstat) { S.db.collection("comments").doc(t.dataset.cid).update({ status: t.dataset.cstat, statusAt: nowISO(), statusBy: S.me }).then(function () { toast(t.dataset.cstat === "fixed" ? "Reviewer will recheck this item" : "Updated"); }).catch(function () { toast("Could not update the comment."); }); return; }
+    if (t.dataset.cstat) { S.db.collection("comments").doc(t.dataset.cid).update({ status: t.dataset.cstat, statusAt: nowISO(), statusBy: S.me }).then(function () { toast(t.dataset.cstat === "fixed" ? "Reviewer will recheck this item" : "Updated"); fx(t.dataset.cstat === "resolved" ? "approve" : "click"); }).catch(function () { toast("Could not update the comment."); }); return; }
     if (t.dataset.cdel) {
       if (t.dataset.confirm !== "1") { t.dataset.confirm = "1"; t.textContent = "Confirm delete"; return; }
       S.db.collection("comments").doc(t.dataset.cdel).delete().catch(function () { toast("Could not delete."); }); return;
@@ -801,7 +889,7 @@
       try { navigator.clipboard.writeText(txt).then(function () { toast("Message copied"); }, function () { $("eBody").select(); toast("Select-all done: press Ctrl+C"); }); } catch (e) { $("eBody").select(); }
       return;
     }
-    if (t.id === "eMark") { var to = $("eTo").value.trim(); upd(c.id, { emailedAt: nowISO(), email: to || c.email || "" }).then(function () { toast("Recorded as emailed"); }); return; }
+    if (t.id === "eMark") { var to = $("eTo").value.trim(); upd(c.id, { emailedAt: nowISO(), email: to || c.email || "" }).then(function () { toast("Recorded as emailed"); fx("click"); }); return; }
   });
   document.addEventListener("keydown", function (ev) {
     var typing = ev.target.matches && ev.target.matches("input, textarea, select, [contenteditable]");
@@ -821,6 +909,7 @@
     var id = ev.target.id;
     if (id === "fProg") S.filters.prog = ev.target.value;
     else if (id === "semSel") { switchSem(ev.target.value); return; }
+    else if (id === "setYear" || id === "setSem") { switchSem($("setYear").value + "/" + $("setSem").value); return; }
     else if (id === "sigFile") { if (ev.target.files[0]) saveSignature(ev.target.files[0]); ev.target.value = ""; return; }
     else if (id === "expTarget") { S.exp.target = ev.target.value; renderExport(); return; }
     else if (ev.target.dataset && ev.target.dataset.expchk) { S.exp[ev.target.dataset.expchk] = ev.target.checked; renderExport(); return; }
@@ -849,9 +938,21 @@
   function fillSettings() {
     var c = S.config, d = semDue();
     $("dueNote").textContent = "Due dates for " + semLabel() + " (the semester you are viewing).";
-    $("setYear").value = c.year || "2026 - 2027"; $("setSem").value = c.semester || "Fall";
+    var sp = spFor(); $("spTitle").textContent = "SharePoint folder for " + semLabel(); $("setSp").value = sp ? sp.link || "" : ""; S._spChecked = null;
+    $("spNote").innerHTML = sp ? '<span class="ok">✓ Set</span> · scans read <span class="mono">' + esc(sp.path.slice(LIB.length + 1)) + "</span>" + (sp.programs ? " (" + sp.programs.length + " program folders)" : "") + (sp.at ? " · checked " + fmtDT(sp.at) : "")
+      : semKey() === FALL26 ? 'Not set: scans use the original folder <span class="mono">' + esc(defaultBase().slice(LIB.length + 1)) + "</span>. Paste a link to change it."
+      : '<span class="bad">Not set.</span> Scanning is blocked for ' + esc(semLabel()) + " until you paste this semester's link.";
+    // The semester picker in Settings switches the semester being set up (the same as the menu at the top).
+    var ys = []; semOptions().forEach(function (o) { var y = o.k.split("/")[0]; if (ys.indexOf(y) < 0) ys.push(y); });
+    $("setYear").innerHTML = ys.map(function (y) { return '<option value="' + esc(y) + '"' + (y === curYear() ? " selected" : "") + ">" + esc(shortYear(y)) + "</option>"; }).join("");
+    $("setSem").value = curSem();
+    var isDef = (c.year || "2026 - 2027") === curYear() && (c.semester || "Fall") === curSem();
+    $("setDefault").checked = isDef; $("setDefault").disabled = isDef;
+    $("setDefault").parentNode.title = isDef ? "This is already the default. To change it, pick another semester and tick this box there." : "";
+    $("semNote").textContent = (isShort() ? semLabel() + " is a short six-week semester: one due date for every course file, no Term A or Term B." : semLabel() + " has Term A, Term B and full-semester due dates.") + (isDef ? " Folio opens on this semester by default." : "");
     var rem = S.courses.filter(function (c) { return c.removed && (c.semester || "2026 - 2027/Fall") === semKey(); });
     $("removedList").innerHTML = rem.length ? rem.map(function (c) { return '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:4px 0"><span>' + esc(c.course + (c.section ? " · " + c.section : "")) + '</span><button class="btn small" type="button" data-restore="' + esc(c.id) + '">Restore</button></div>'; }).join("") : '<span class="note">None.</span>';
+    var sh = isShort(); $("lblDueA").hidden = sh; $("lblDueB").hidden = sh; $("lblDueFText").textContent = sh ? semLabel().split(" ")[0] + " due date (6-week semester)" : "Full-semester due date";
     $("dueA").value = d.A || ""; $("dueB").value = d.B || ""; $("dueF").value = d.F || ""; $("setLink").value = c.link || ""; $("sigPrev").innerHTML = c.signature ? '<img alt="Saved signature" style="max-height:48px;max-width:220px" src="' + esc(c.signature) + '">' : '<span class="note" style="color:#5B6763">No signature saved</span>'; $("sigRemove").hidden = !c.signature; $("setRevName").value = c.reviewerName || "Mousa Alhatti"; $("setRevEmail").value = c.reviewerEmail || "mousa.alhatti@adu.ac.ae";
   }
   // Signature: trim the white space and make the background transparent, then save it with the settings.
@@ -875,12 +976,29 @@
     };
     fr.readAsDataURL(file);
   }
-  function saveSettings() {
-    var dueBy = Object.assign({}, S.config.dueBySem || {}); dueBy[semKey()] = { A: $("dueA").value, B: $("dueB").value, F: $("dueF").value };
-    var next = Object.assign({}, S.config, { year: $("setYear").value.trim() || "2026 - 2027", semester: $("setSem").value, dueBySem: dueBy, link: $("setLink").value.trim(), reviewerName: $("setRevName").value.trim(), reviewerEmail: $("setRevEmail").value.trim() });
+  async function saveSettings() {
+    var raw = $("setSp").value.trim(), cur = spFor(), spNext;
+    if (raw && (!cur || raw !== cur.link)) {
+      var chk = S._spChecked && S._spChecked.link === raw ? S._spChecked : await runSpCheck();
+      if (!chk || chk.err) { toast("Settings not saved: fix the SharePoint link first."); return; }
+      spNext = { link: raw, path: chk.path, programs: chk.programs, at: nowISO(), by: S.me };
+    }
+    if (!raw && cur) { if (!S._spClear) { S._spClear = 1; $("spNote").innerHTML = '<span class="bad">The link box is empty.</span> Press Save again to remove this semester\'s SharePoint folder.'; return; } }
+    S._spClear = 0;
+    var spBy = Object.assign({}, S.config.spBySem || {}); if (spNext) spBy[semKey()] = spNext; else if (!raw) delete spBy[semKey()];
+    var dueBy = Object.assign({}, S.config.dueBySem || {}); dueBy[semKey()] = isShort() ? { F: $("dueF").value } : { A: $("dueA").value, B: $("dueB").value, F: $("dueF").value };
+    var next = Object.assign({}, S.config, { year: $("setDefault").checked ? curYear() : (S.config.year || "2026 - 2027"), semester: $("setDefault").checked ? curSem() : (S.config.semester || "Fall"), dueBySem: dueBy, spBySem: spBy, link: $("setLink").value.trim(), reviewerName: $("setRevName").value.trim(), reviewerEmail: $("setRevEmail").value.trim() });
     if (semKey() === FALL26) next.due = dueBy[FALL26];
     var defChanged = next.year !== S.config.year || next.semester !== S.config.semester;
-    S.db.collection("config").doc("settings").set(next).then(function () { toast("Settings saved"); $("settingsPanel").hidden = true; if (defChanged) switchSem(next.year + "/" + next.semester); }).catch(function () { toast("Could not save settings."); });
+    S.db.collection("config").doc("settings").set(next).then(function () { toast("Settings saved"); fx("click"); $("settingsPanel").hidden = true; if (defChanged) toast("Settings saved. Folio now opens on " + semLabel() + " by default."); }).catch(function () { toast("Could not save settings."); });
+  }
+
+  async function runSpCheck() {
+    var n = $("spNote"), b = $("spCheck"); n.textContent = "Checking the folder on SharePoint…"; b.disabled = true;
+    var r = await checkSpLink($("setSp").value); b.disabled = false;
+    if (r.err) { n.innerHTML = '<span class="bad">✕ ' + esc(r.err) + "</span>"; S._spChecked = null; return r; }
+    n.innerHTML = '<span class="ok">✓ Folder found</span> · <span class="mono">' + esc(r.path.slice(LIB.length + 1)) + "</span> · " + r.programs.length + " program folders: " + esc(r.programs.map(CF.programShort).join(", ")) + ". Press Save settings to use it for " + esc(semLabel()) + ".";
+    S._spChecked = r; return r;
   }
 
   /* ---------- shared: spreadsheet library (loaded only when needed) ---------- */
@@ -921,7 +1039,7 @@
     var iss = [["Program", "Course", "Instructor", "Item", "Detail"]];
     cs.slice().sort(function (a, b) { return order.indexOf(a.programShort) - order.indexOf(b.programShort) || (a.course + a.section).localeCompare(b.course + b.section); }).forEach(function (c) {
       var sc = scan(c), rv = (c.review || {});
-      det.push([c.programShort, c.course, c.section || "", c.instructor || "", c.email || "", c.term || "", dueFor(c) || "", c.enrolled || "", need(c), stateLabel(dstate(c)), sc.score, itemSym(c, 1), itemSym(c, 2), itemSym(c, 3), itemSym(c, 4), itemSym(c, 5), itemSym(c, 6), itemSym(c, 7), ({ pending: "Not reviewed", approved: "Approved", revise: "Needs revision" })[rv.status || "pending"], rv.at ? rv.at.slice(0, 10) : "", openComments(c.id).length, c.emailedAt ? c.emailedAt.slice(0, 10) : "", c.scannedAt ? c.scannedAt.slice(0, 10) : ""]);
+      det.push([c.programShort, c.course, c.section || "", c.instructor || "", c.email || "", eTerm(c) || "", dueFor(c) || "", c.enrolled || "", need(c), stateLabel(dstate(c)), sc.score, itemSym(c, 1), itemSym(c, 2), itemSym(c, 3), itemSym(c, 4), itemSym(c, 5), itemSym(c, 6), itemSym(c, 7), ({ pending: "Not reviewed", approved: "Approved", revise: "Needs revision" })[rv.status || "pending"], rv.at ? rv.at.slice(0, 10) : "", openComments(c.id).length, c.emailedAt ? c.emailedAt.slice(0, 10) : "", c.scannedAt ? c.scannedAt.slice(0, 10) : ""]);
       if (sc.state !== "not_started") (sc.items || []).forEach(function (i) { if (i.s !== "ok") iss.push([c.programShort, c.course, c.instructor || "", i.k + ". " + CF.SECTIONS[i.k - 1].short, i.note]); });
       (sc.issues || []).forEach(function (x) { iss.push([c.programShort, c.course, c.instructor || "", "Automatic check", x]); });
       openComments(c.id).forEach(function (m) { iss.push([c.programShort, c.course, c.instructor || "", "Reviewer comment" + (m.sec ? " (" + CF.SECTIONS[m.sec - 1].short + ")" : ""), m.text]); });
@@ -1016,7 +1134,7 @@
     var starts = lines.map(function (l) { return +new Date(l.start); }).filter(Boolean), semStart = Math.min.apply(null, starts);
     function termOf(ls) {
       var t = ls.map(function (l) { var s = +new Date(l.start), e = +new Date(l.end); if (!s || !e) return ""; if ((e - s) / 864e5 > 70) return "Full semester"; return s - semStart < 21 * 864e5 ? "Term A" : "Term B"; }).filter(Boolean);
-      return t[0] || "";
+      return isShort() ? SHORT : t[0] || "";
     }
     var used = {}, updates = [], notOn = [];
     semCourses().forEach(function (c) {
@@ -1043,7 +1161,8 @@
   }
   function renderImport() {
     S._panelIs = "imp";
-    var I = S._imp, h = '<p class="note" style="margin:0">' + esc(I.file) + ": " + I.n + " Education class lines read and compared with Folio.</p>";
+    var I = S._imp, h = '<p class="note" style="margin:0">' + esc(I.file) + ": " + I.n + " Education class lines read and compared with the " + esc(semLabel()) + " course files in Folio.</p>" +
+      (hasFolder() ? '<p class="note" style="margin:0">SharePoint folder for ' + esc(semLabel()) + ': <span class="mono">' + esc(basePath().slice(LIB.length + 1)) + "</span></p>" : '<div class="banner warn"><b>No SharePoint folder is set for ' + esc(semLabel()) + '.</b> <span>Add it in Settings before scanning, so the course files are read from this semester\'s folder.</span></div>');
     h += '<section><h3>Updates to apply (' + I.updates.length + ")</h3>";
     if (!I.updates.length) h += '<p class="note">Class sizes, terms and campuses already match the schedule.</p>';
     else {
@@ -1111,5 +1230,6 @@
     if (S.isLead) { S.mcp = await mcpP; try { S.downloads = await claude.use("downloads"); } catch (e) {} }
     renderAll();
   }
+  setSound(soundOn(), true);
   boot();
 })();

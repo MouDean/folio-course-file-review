@@ -2,15 +2,15 @@
 <div class="kpis"><button class="kpi"><b>34</b><span>Course files</span></button><button class="kpi ok"><b>5</b><span>Complete</span></button><button class="kpi ready on" aria-pressed="true"><b>2</b><span>Ready to review</span></button><button class="kpi late zero"><b>0</b><span>Overdue</span></button></div>
 <style>
 body{margin:0;background:var(--surface);font-family:var(--font-body)}
-.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:20px}
-.kpi{position:relative;display:grid;gap:2px;text-align:left;border:1px solid var(--line);background:var(--raised);border-radius:var(--radius-lg);padding:10px 12px;color:var(--ink);font:inherit;cursor:pointer}
-.kpi b{font-family:var(--font-display);font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px 10px;padding:28px 20px 20px}
+.kpi{position:relative;display:grid;gap:2px;text-align:left;border:1px solid var(--line);background:var(--raised);border-radius:0 var(--radius-lg) var(--radius-lg) var(--radius-lg);padding:12px 12px 10px;color:var(--ink);font:inherit;cursor:pointer}
+.kpi b{font-family:var(--font-display);font-weight:600;font-size:24px;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .kpi span{font-size:12px;color:var(--muted);font-weight:600}
-.kpi::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:3px;border-radius:3px 3px 0 0}
-.ok b{color:var(--ok)}.ok::after{background:var(--ok)}
-.ready b{color:var(--accent)}.ready::after{background:var(--accent)}
-.late b{color:var(--miss)}
-.zero b{color:var(--muted);opacity:.7}.zero::after{background:transparent}
-.on{background:var(--accent-soft);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.kpi::before{content:"";position:absolute;left:-1px;top:-11px;width:46%;height:11px;background:var(--raised);border:1px solid var(--line);border-bottom:0;border-radius:7px 7px 0 0}
+.ok::before{background:var(--ok-soft);border-color:var(--ok)}
+.ready b{color:var(--accent)}.ready::before{background:var(--accent-soft);border-color:var(--accent-line)}
+.late::before{background:var(--miss-soft);border-color:var(--miss)}
+.zero b{color:var(--muted)}.zero::before{background:var(--raised);border-color:var(--line)}
+.on,.on::before{background:var(--fill);border-color:var(--fill)}.on b,.on span{color:var(--fill-ink)!important}
 </style>
 <script></script>

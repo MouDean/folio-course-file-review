@@ -8,7 +8,7 @@ Folio is a single-page tool for reviewing university course files on SharePoint 
 - **Applies department rules**: graded samples per assessment and level (High / Medium / Low) — 1 for classes under 30, 2 for 30–60, 3 for more than 60 — and the syllabus must state the section and campus.
 - **Skips unchanged and approved course files** to keep scans fast; a "Full" option re-reads everything.
 - **Reviewer workflow**: approve / needs revision, accept an item as done, comments with open / fixed / resolved status.
-- **Semesters**: Fall, Winter, Spring and Summer are kept separately, with a switcher at the top.
+- **Semesters**: Fall, Winter, Spring and Summer are kept separately, with a switcher at the top. Each semester has its own SharePoint folder link, saved in Settings and checked before use; a scan only reads the folder set for the semester being viewed (Fall 2026–27 falls back to its original folder). Winter and Summer are six-week semesters with no Term A / Term B: every course file in them has one due date.
 - **Schedule import** (.xlsx) to update class sizes, terms and campuses.
 - **Emails**: per-course-file review emails and batch reminders, opened in Outlook for the reviewer to send.
 - **Reports**: quick Excel report, plus formal PDF or styled Excel exports for a course file, an instructor, a program or the whole department, with charts and a signed sign-off block.

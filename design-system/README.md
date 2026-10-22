@@ -42,39 +42,35 @@ Folio is the course file review tool of the Department of Education (College of 
 - **Student work is counted, never listed.** No student names on screen, in exports or in emails.
 - **Emails** open with "Dear Dr. <first name>," and have no sign-off, because Outlook adds the signature.
 
-### Visual foundations
+### Visual foundations — "The Archive" (v3, October 2026)
 
-**Colour.** A quiet green-grey neutral ground (`bg`, `surface`, `raised`, `sunk`) carries everything. The one brand colour is ADU maroon (`accent`). It marks the primary action (Scan SharePoint), the semester chip, focus rings, sort arrows and the selected filter, and nothing else. Three signal hues carry meaning and are never decoration:
+Folio looks like a well-kept paper archive: a dark-teal cover over warm paper, with folder tabs for tiles and program groups. The v2 look is kept in `backup_v05_design2/` and the v4 "Bento workspace" in `backup_v08_bento/`.
 
-| Meaning | Token | Use |
-|---|---|---|
-| Meets the model | `ok` / `ok-soft` | filled dot ✓, Approved, complete bars |
-| Partly there | `part` / `part-soft` | outlined dot !, In progress, due within 7 days |
-| Missing / overdue | `miss` / `miss-soft` | outlined dot ✕, Overdue, Needs revision |
-| Not uploaded yet | `none` / `none-soft` | dot ·, dashed "Nothing uploaded yet" bar |
+**Layout.** One page, top to bottom:
 
-Status is never shown by hue alone. Each dot also has a glyph (✓ ! ✕ ·) and a fill style (solid, outlined, soft), so it still reads in greyscale and for colour-blind reviewers. Every text pair meets 4.5:1 in both themes.
+- **Cover:** a dark-teal header (`cover`) holding the Folio mark and serif wordmark, the department line, the semester chip and the last-scan time. The ADU logo sits on the right above the program menu and the saffron Scan SharePoint button. A saffron scalloped edge runs along the bottom.
+- **Toolbar:** Add course file, Email reminders, Download report, Export PDF / Excel, then the Auto / Light / Dark switch, the Sound switch and Settings.
+- **Deadline strip:** one card per term due date with a calendar tile; the next deadline gets a saffron edge and badge. Winter and Summer show a single "Short semester" card.
+- **Department overview:** eight folder-tab KPI tiles. **Progress by program:** a stacked bar per program.
+- **Filters and table:** the course files grouped by program under dark-teal folder tabs that fold open and closed, then the legend and "How the checker works".
 
-**Type.** *Archivo* (display) for the product name, headings, course codes in the sheet and KPI numbers. *Public Sans* (body) for everything else. *JetBrains Mono* only for copyable emails and key hints. Numbers use tabular figures. Eyebrows and table headers are 11px uppercase with 0.06em tracking, in `muted`.
+Clicking a deadline, a tile or a program bar filters the table. On phones the cover stacks and the table becomes cards.
 
-**Space and shape.** Four spacing steps from `space-1` 4px to `space-5` 20px. Radii grow with the size of the container: `radius-sm` for dots, `radius-md` for controls, `radius-lg` for tiles and cards, `radius-xl` for panels, and `radius-pill` for status pills. Cards are separated with hairline borders (`line`) and a faint `shadow-sm`. Only the side sheet and the toast use `shadow-lg`.
+**Colour.** Warm paper (`bg`) with cream panels (`surface`). Deep teal (`accent`, `fill`, `cover`) is the main colour, and saffron (`gold`) marks the scalloped edge, the semester chip, the Scan button and the next deadline. The signal colours are green `ok`, amber `part`, red `miss` and grey `none`. Dark mode swaps to charcoal-teal with mint and saffron accents. Every text pair meets 4.5:1 in both themes.
 
-**Layout.** One working screen, from top to bottom:
+**Type.** Plus Jakarta Sans for everything, including the wordmark, panel titles and numbers (weights 700–800), chosen because it is plain and easy to read. IBM Plex Mono for course codes and dates.
 
-1. Header: brand, semester and scan controls.
-2. Action toolbar.
-3. Due-date cards.
-4. Summary band (KPI tiles beside progress by program).
-5. Filter bar.
-6. Grid of course files × the seven items, grouped by program. Program groups fold, and the columns sort.
-
-Detail opens in a right-hand side sheet with previous/next buttons. On phones (≤760px) the grid rows become cards.
+**Sound** (made in the page, no audio files, muted with the Sound switch in the toolbar):
+- a two-note chime when a scan completes, and a low tone if it fails;
+- a soft rising pair when a course file is approved or a comment is resolved;
+- a click for smaller actions (settings saved, marked as sent or emailed);
+- a short arpeggio the first time a program reaches 100% complete, or every course file in the semester is approved (once per program per semester, per browser).
 
 ### Components
 
 - **StatusDot**: the 24px square for one checklist item (ok, part, miss, none).
 - **StatusPill**: a rounded state label for the checker status or the reviewer decision.
-- **KpiTile**: a number tile that filters the grid when pressed, with a 3px signal bar at the bottom edge.
+- **KpiTile**: a folder-shaped number tile that filters the grid when pressed; its tab shows the signal colour.
 
 ### Iconography
 
@@ -82,4 +78,8 @@ Folio uses simple 1.8px-stroke line icons (24px grid, round caps) next to button
 
 ### Logo
 
-The Folio mark is two stacked pages behind a folder. It is drawn in `accent` with a `surface` interior and an `ok` check, as an inline SVG in the page header. It isn't uploaded here yet.
+Two marks sit on the cover. On the left is the Folio mark: two stacked pages behind a folder, with saffron outlines on teal and a sand-coloured check, drawn as inline SVG. On the right is the white Abu Dhabi University logo (`assets/adu-logo-white.png`, taken from adu.ac.ae), shown 42px tall above the scan controls. A large, faint crop of the ADU woven mark (`assets/adu-mark-white.png`, 9% opacity) replaces the earlier star lattice as the cover's background. Only use the ADU logo in its original white or colour versions, and never recolour or distort it. A brand board for this identity is in Canva ("Folio brand identity board").
+
+### Type scale (October 2026)
+
+The root size is 14.5px and body text is 13px. The wordmark is about 33px, KPI numbers about 24px, panel titles about 15px, and table text 12–13px with codes at 11.6px.
